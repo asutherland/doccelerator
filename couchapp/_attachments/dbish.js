@@ -24,8 +24,10 @@ function RepoProcessor(aRepo) {
 }
 RepoProcessor.prototype = {
   sync: function RepoProcessor_sync() {
-    if (!this.files_to_process.length)
+    if (!this.files_to_process.length) {
+      fldb.doneProcessing(this);
       return true;
+    }
 
     this.current_file = this.files_to_process.shift();
     this._getSource();
@@ -155,9 +157,18 @@ RepoProcessor.prototype = {
 var fldb = {
   _activeProcessors: [],
   updateRepo: function(aRepo) {
+    User.attemptLogin(function () {
+                        fldb._loggedInUpdateRepo(aRepo);
+                      });
+  },
+  _loggedInUpdateRepo: function(aRepo) {
     var rp = new RepoProcessor(aRepo);
     this._activeProcessors.push(rp);
     rp.sync();
+  },
+  doneProcessing: function(aRepoProcessor) {
+    let idx = this._activeProcessors.indexOf(aRepoProcessor);
+    this._activeProcessors.splice(idx, 1);
   },
 
   _fileCache: {},
