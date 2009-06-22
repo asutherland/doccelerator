@@ -237,9 +237,9 @@ function fixup_references(aNodes) {
   }
 }
 
-function process_js(ast, f) {
+function process_js(ast, f, argstr) {
   let oot = {
-    filename: normalize_path(f),
+    filename: normalize_path(argstr || f),
     docs: [],
   };
 
