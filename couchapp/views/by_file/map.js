@@ -1,4 +1,4 @@
 function(doc) {
-  if (doc.filename)
-    emit(doc.filename);
+  if (doc.file)
+    emit(doc.file, null);
 }

@@ -48,8 +48,14 @@ function make_node(aOot, aType, aInfo, aName, aParent) {
     parentName: aParent ? aParent.fullName : null,
   };
 
+  let comment;
+  // If this is a class, the comment may be on our constructor.
+  if (aInfo.constructor && aInfo.constructor.comment)
+    comment = aInfo.constructor.comment;
   if (aInfo.comment)
-    parse_comment(aInfo.comment, node);
+    comment = comment ? (comment + aInfo.comment) : aInfo.comment;
+  if (comment)
+    parse_comment(comment, node);
 
   aOot.docs.push(node);
   return node;
@@ -110,7 +116,7 @@ var TagParsers = {
   }
 };
 
-const REFERENCE_REGEX = /\|([^|]+)\|/g;
+const REFERENCE_REGEX = /\|([^ |]+)\|/g;
 function parse_comment_text(aText, aNode) {
   let match;
 

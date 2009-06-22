@@ -1,13 +1,21 @@
 var thunderbirdRepo = {
-  url_base: 'http://127.0.0.1/xhr/hg/mozilla/comm-central/raw-file/tip/',
+  url_base: '/xhr/hg/mozilla/comm-central/raw-file/tip/',
          // 'http://hg.mozilla.org/comm-central/raw-file/tip/',
   repo_name: 'comm-central',
   files: [
-    'mail/base/content/folderDisplay.js'
+    'mail/base/content/folderDisplay.js',
+    'mail/base/content/messageDisplay.js',
+
+    'mailnews/base/src/dbViewWrapper.js',
+    'mailnews/base/src/quickSearchManager.js',
+    'mailnews/base/src/searchSpec.js',
+    'mailnews/base/src/virtualFolderWrapper.js',
+
+    'mailnews/base/util/jsTreeSelection.js',
   ]
 };
 
-var HYDRA_FLAM_URL = "http://127.0.0.1/cgi-bin/flamcgi.py";
+var HYDRA_FLAM_URL = "/cgi-bin/flamcgi.py";
 
 function RepoProcessor(aRepo) {
   this.repo = aRepo;
@@ -73,7 +81,7 @@ RepoProcessor.prototype = {
     console.log("Nuking documents previously associated with the file.");
     var dis = this;
     DB.view(design + "/by_file", {
-              key: this.current_file,
+              key: this.repo.repo_name + "/" + this.current_file, reduce: false,
               include_docs: true,
               success: function(data) {
                 dis._gotExisting(data);
@@ -151,4 +159,28 @@ var fldb = {
     this._activeProcessors.push(rp);
     rp.sync();
   },
+
+  _fileCache: {},
+  clearCache: function() {
+    this._fileCache = {};
+  },
+  getFileDocs: function(aWhat, aFilename, aCallback) {
+    if (aFilename in this._fileCache) {
+      aCallback(this._fileCache[aFilename]);
+      return;
+    }
+
+    DB.view(design + "/" + aWhat + "_by_file", {
+              key: aFilename,
+              include_docs: true,
+              success: function(data) {
+                var docs = [];
+                var rows = data.rows;
+                for (var i = 0; i < rows.length; i++)
+                  docs.push(rows[i].doc);
+                fldb._fileCache[aFilename] = docs;
+                aCallback(docs);
+              },
+            });
+  }
 };

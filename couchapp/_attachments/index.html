@@ -7,10 +7,17 @@
   </head>
   <body>
     <div id="sidebar">
-      <div id="control">
-        <a onclick="fldb.updateRepo(thunderbirdRepo)">Sync</a>
+      <div id="control" class="happybox">
+        <h3><a>Controls</a></h3>
+        <div class="content">
+          <a onclick="fldb.updateRepo(thunderbirdRepo)">Sync</a>
+          <a onclick="Widgets.refreshAll()">Refresh UI</a>
+        </div>
       </div>
-      <div id="files">
+      <div id="files" class="happybox">
+        <h3><a>Files</a></h3>
+        <div class="content">
+        </div>
       </div>
       <div id="core">
       </div>
@@ -37,6 +44,7 @@
       design = parts.slice(-2, -1)[0];
       DB = $.couch.db(dbname);
       DB.uri = urlbase + dbname + '/';
+      Widgets.refreshAll();
     });
   </script>
 </html>
