@@ -157,8 +157,13 @@ RepoProcessor.prototype = {
 var fldb = {
   _activeProcessors: [],
   updateRepo: function(aRepo) {
+    console.log("Trying to make sure you are logged in...");
     User.attemptLogin(function () {
+                        console.log("Logged in as", User.username);
                         fldb._loggedInUpdateRepo(aRepo);
+                      },
+                      function () {
+                        console.log("Bad news on the login front...");
                       });
   },
   _loggedInUpdateRepo: function(aRepo) {
@@ -167,7 +172,7 @@ var fldb = {
     rp.sync();
   },
   doneProcessing: function(aRepoProcessor) {
-    let idx = this._activeProcessors.indexOf(aRepoProcessor);
+    var idx = this._activeProcessors.indexOf(aRepoProcessor);
     this._activeProcessors.splice(idx, 1);
   },
 
