@@ -1,12 +1,38 @@
+var Log = {
+  info: function() {
+  },
+  warning: function() {
+  },
+  error: function() {
+  }
+};
+
+function _(aStr) {
+  return aStr;
+}
+
 var UI = {
+  /**
+   * Show the given documentation 'thing', choosing an appropriate position
+   *  relative to the source of the click.
+   *
+   * @param aThing The documentation 'thing', a document from the couch.
+   * @param aWhatClick the jquery-wrapped docthing where the click originated.
+   */
   show: function UI_show(aThing, aWhatClicked) {
+    var widget = Widgets.body[aThing.type || "default"];
+
+    if (widget.prepareToShow)
+      widget.prepareToShow(aThing, function(aExtra) {
+                             UI._realShow(widget, aThing, aWhatClicked, aExtra);
+                           });
+    else
+      this._realShow(aThing, aWhatClicked);
+  },
+  _realShow: function UI__realShow(aWidget, aThing, aWhatClicked, aExtra) {
     var node = this._makeThingNode(aThing);
 
-    console.log("Building node");
-
-    node.append(this.formatDocStream(aThing.docStream));
-
-    console.log("Node built");
+    aWidget.show(node, aThing, aExtra);
 
     node.hide();
     if (aWhatClicked && aWhatClicked.length)
@@ -15,12 +41,15 @@ var UI = {
       $("#body").prepend(node);
     node.show("blind");
   },
-  _showClick: function UI__showClick(aEvent) {
+  showClick: function UI_showClick(aEvent) {
     UI.show($(this).data("what"),
             $(aEvent.target).closest(".docthing"));
   },
-  _showReferenceClick: function UI__showReferenceClick() {
 
+  remove: function UI_remove(aDocThing) {
+    aDocThing.hide("blind", undefined, undefined, function() {
+                     aDocThing.remove();
+                   });
   },
 
   formatBrief: function(aThing) {
@@ -28,7 +57,7 @@ var UI = {
                .text(aThing.name)
                .data("what", aThing)
                .addClass(aThing.type + "-name")
-               .click(this._showClick);
+               .click(this.showClick);
     var summary = this.formatSummary(aThing);
     var tr = $("<tr></tr>");
     tr.append($("<td></td>").append(link));
@@ -50,22 +79,22 @@ var UI = {
     return nodes;
   },
 
+  /**
+   * Create a docthing widget for a given thing.
+   */
   _makeThingNode: function UI__makeThingNode(aThing) {
     var node = $("<div></div>")
                .attr("id", aThing.type + "-" + aThing.fullName)
                .addClass("docthing");
-    node.append($("<h2></h2>")
-                  .text(aThing.fullName)
-                  .addClass(aThing.type + "-name"));
-    return node;
-  },
-  _makeSyntheticThingNode: function UI__makeSyntheticThingNode(aType, aName, aData) {
-    var node = $("<div></div>")
-               .attr("id", aType + "-" + aName)
-               .addClass("docthing");
-    node.append($("<h2></h2>")
-                  .text(aName)
-                  .addClass(aType + "-name"));
+    $("<h2></h2>")
+      .text(aThing.fullName)
+      .addClass(aThing.type + "-name")
+      .appendTo(node);
+
+    var toolbar = $("<div></div>")
+      .addClass("docthing-toolbar")
+      .appendTo(node);
+
     return node;
   },
 
@@ -79,30 +108,6 @@ var UI = {
     }
 
     return filtered;
-  },
-
-  /**
-   * Show the file, providing top-level information about the file.
-   */
-  showFile: function UI_showFile(aFilename) {
-    fldb.getFileDocs("interesting", aFilename, function(docs) {
-                       UI._showFileGivenDocs(aFilename, docs);
-                     });
-  },
-  _showFileGivenDocs: function UI__showFileGivenDocs(aFilename, aDocs) {
-    var node = this._makeSyntheticThingNode("file", aFilename);
-    node.append(this.formatBriefsWithHeading(
-                  "Globals",
-                  this._filterDocsByType(aDocs, "global")));
-    node.append(this.formatBriefsWithHeading(
-                  "Classes",
-                  this._filterDocsByType(aDocs, "class")));
-    node.append(this.formatBriefsWithHeading(
-                  "Functions",
-                  this._filterDocsByType(aDocs, "function")));
-    node.hide();
-    $("#body").prepend(node);
-    node.show("blind");
   },
 
   /**
@@ -147,7 +152,8 @@ var UI = {
         if (hunk.type == "reference") {
           nodes = nodes.add($("<a></a>")
                     .text(hunk.reference)
-                    .click(this._showReferenceClick));
+                    .data("what", hunk)
+                    .click(UI.showClick));
         }
       }
     }
@@ -188,4 +194,102 @@ var UI = {
     }
     return nodes;
   },
+};
+
+var UIUtils = {
+  /**
+   * Given a set of items with labels containing paths, build a simplified tree
+   *  structure.
+   *
+   * The general idea where '' indicates a string and "" a labeled object:
+   * - ["foo.js"] => ["foo.js"]
+   * - ["a/bar.js", "a/baz.js"] => ['a', "bar.js", "baz.js"]
+   * - ["foo.js", "a/bar.js", "a/baz.js"] =>
+   *     ['', ['a', "bar.js", "baz.js"], "foo.js"]
+   *
+   * @return A simplified tree in the form of nested arrays.  The first element
+   *     in each array is always the {String} label for that sub-tree.
+   */
+  treeifyPaths: function(aItems, aLabelKey) {
+    // in order to distinguish between file-ish nodes and nodes in our tree rep,
+    //  we assume that that labelKey is never a path component.  Lazy but
+    //  fine for our purposes.
+    var fullTree = {};
+
+    function placeInTree(aNode, aPathParts, aWhat) {
+      if (aPathParts.length == 1)
+        aNode[aPathParts[0]] = aWhat;
+      else {
+        var part = aPathParts.shift();
+        var childNode;
+        if (part in aNode)
+          childNode = aNode[part];
+        else
+          childNode = aNode[part] = {};
+        placeInTree(childNode, aPathParts, aWhat);
+      }
+    }
+
+    var iItem, item;
+    for (iItem = 0; iItem < aItems.length; iItem++) {
+      item = aItems[iItem];
+      var pathParts = item[aLabelKey].split("/");
+      placeInTree(fullTree, pathParts, item);
+    }
+
+    function labelComparator(a, b) {
+      var sa, sb;
+      if (typeof(a) == "string")
+        sa = a;
+      else if (a.length)
+        sa = typeof(a[0]) == "string" ? a[0] : a[0][aLabelKey];
+      else
+        sa = a[aLabelKey];
+      if (typeof(b) == "string")
+        sb = b;
+      else if (b.length)
+        sb = typeof(b[0]) == "string" ? b[0] : b[0][aLabelKey];
+      else
+        sb = b[aLabelKey];
+      return sa.localeCompare(sb);
+    }
+    function makeSimpleTree(aNode, aLabelSoFar) {
+      var labelCount = 0, treeCount = 0;
+      // count labeled nodes and tree nodes
+      var key, child;
+      for (key in aNode) {
+        child = aNode[key];
+        if (aLabelKey in child)
+          labelCount++;
+        else
+          treeCount++;
+      }
+      // collapse case
+      if ((labelCount + treeCount) == 1) {
+        aLabelSoFar += key;
+        if (treeCount)
+          return makeSimpleTree(child, aLabelSoFar + "/");
+        child.label = aLabelSoFar;
+        return [child];
+      }
+
+      // expand case...
+      var out = [];
+      for (key in aNode) {
+        child = aNode[key];
+        // check if it's a file/leaf node
+        if (aLabelKey in child) {
+          child[aLabelKey] = key;
+          out.push(child);
+        }
+        else
+          out.push(makeSimpleTree(child, key + "/"));
+      }
+      out.sort(labelComparator);
+      out.unshift(aLabelSoFar);
+      return out;
+    }
+
+    return makeSimpleTree(fullTree, "");
+  }
 };

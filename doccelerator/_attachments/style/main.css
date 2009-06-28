@@ -17,6 +17,10 @@ body {
   margin-left: 20%;
 }
 
+ul {
+  padding-left: 20px;
+}
+
 .docthing {
   background: #222222;
   -moz-border-radius-bottomleft:3px;
@@ -29,6 +33,10 @@ body {
 
 .docthing h2 {
   margin: 0;
+}
+
+.docthing-toolbar {
+  float: right;
 }
 
 .file-name {

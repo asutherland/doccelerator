@@ -39,7 +39,7 @@ RepoProcessor.prototype = {
   _getSource: function() {
     var dis = this;
     var url = this.repo.url_base + this.current_file;
-    console.log("Retrieving source for", this.current_file, "from", url);
+    Log.info("Retrieving source for", this.current_file, "from", url);
     $.get(url, null, function (data) {
             dis._gotSource(data);
           }, "text");
@@ -55,7 +55,7 @@ RepoProcessor.prototype = {
    * Send the source code through the flamboydoc jshydra service.
    */
   _hydraSource: function() {
-    console.log("Pushing file source through flamboydoc service.");
+    Log.info("Pushing file source through flamboydoc service.");
     var dis = this;
     $.post(HYDRA_FLAM_URL, {
              filename: this.repo.repo_name + "/" + this.current_file,
@@ -80,7 +80,7 @@ RepoProcessor.prototype = {
    *  and setting the _deleted field so as to mark them deleted.
    */
   _nukeExisting: function() {
-    console.log("Nuking documents previously associated with the file.");
+    Log.info("Nuking documents previously associated with the file.");
     var dis = this;
     DB.view(design + "/by_file", {
               key: this.repo.repo_name + "/" + this.current_file, reduce: false,
@@ -89,7 +89,7 @@ RepoProcessor.prototype = {
                 dis._gotExisting(data);
               },
               error: function() {
-                console.log("Failure retrieving existing file documents.");
+                Log.error("Failure retrieving existing file documents.");
               }
             });
   },
@@ -118,7 +118,7 @@ RepoProcessor.prototype = {
    *  for them.
    */
   _insertNew: function() {
-    console.log("Inserting our new documents for the file.");
+    Log.info("Inserting our new documents for the file.");
     var uuidsRequired = this.file_hydra.docs.length;
     var dis = this;
     $.get(urlbase + "_uuids", {count: uuidsRequired},
@@ -142,7 +142,7 @@ RepoProcessor.prototype = {
                     dis._insertedNew();
                   },
                   error: function() {
-                    console.log("Failed to insert new documents.");
+                    Log.error("Failed to insert new documents.");
                   }
                 });
   },
@@ -157,13 +157,13 @@ RepoProcessor.prototype = {
 var fldb = {
   _activeProcessors: [],
   updateRepo: function(aRepo) {
-    console.log("Trying to make sure you are logged in...");
+    Log.info("Trying to make sure you are logged in...");
     User.attemptLogin(function () {
-                        console.log("Logged in as", User.username);
+                        Log.info("Logged in as", User.username);
                         fldb._loggedInUpdateRepo(aRepo);
                       },
                       function () {
-                        console.log("Bad news on the login front...");
+                        Log.error("Bad news on the login front...");
                       });
   },
   _loggedInUpdateRepo: function(aRepo) {
