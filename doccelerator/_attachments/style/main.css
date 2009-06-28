@@ -63,6 +63,10 @@ ul {
   color: #6f0aaa;
 }
 
+.undocumented {
+  color: #aaaaaa;
+}
+
 #sidebar .happybox h3 {
   -moz-border-radius-bottomleft:6px;
   -moz-border-radius-bottomright:6px;

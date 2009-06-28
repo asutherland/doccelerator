@@ -10,7 +10,6 @@ var Widgets = {
   body: {
   },
   refreshAll: function() {
-    fldb.clearCache();
     var key, widget;
     for (key in Widgets.sidebar) {
       widget = Widgets.sidebar[key];
@@ -87,28 +86,51 @@ Widgets.sidebar.files = {
   }
 };
 
+Widgets.body.default = {
+  show: function(aNode, aThing) {
+    aNode.append(UI.formatDocStream(aThing.docStream));
+  }
+};
+
 /**
  * Provides a top-level summary of source files.
  */
 Widgets.body.file = {
   prepareToShow: function(aFile, aCallback) {
-    fldb.getFileDocs("interesting", aFile.name, function(docs) {
-                       aCallback(docs);
-                     });
+    fldb.getFileDocs("interesting", aFile.name, aCallback);
   },
   show: function(aNode, aFile, aDocs) {
-    aNode.append(this.formatBriefsWithHeading(
+    aNode.append(UI.formatBriefsWithHeading(
                    _("Globals"),
-                   this._filterDocsByType(aDocs, "global")));
-    aNode.append(this.formatBriefsWithHeading(
+                   DBUtils.filterDocsByType(aDocs, "global")));
+    aNode.append(UI.formatBriefsWithHeading(
                    _("Classes"),
-                   this._filterDocsByType(aDocs, "class")));
-    aNode.append(this.formatBriefsWithHeading(
+                   DBUtils.filterDocsByType(aDocs, "class")));
+    aNode.append(UI.formatBriefsWithHeading(
                    _("Functions"),
-                   this._filterDocsByType(aDocs, "function")));
-    node.hide();
-    $("#body").prepend(node);
-    node.show("blind");
+                   DBUtils.filterDocsByType(aDocs, "function")));
+  }
+};
+
+Widgets.body["class"] = {
+  prepareToShow: function(aClass, aCallback) {
+    fldb.getDocs("by_parent", aClass.fullName, aCallback);
+  },
+  show: function(aNode, aClass, aDocs) {
+    aNode.append(UI.formatDocStream(aClass.docStream));
+
+    aNode.append(UI.formatBriefsWithHeading(
+                   _("Methods"),
+                   DBUtils.filterDocsByType(aDocs, "method")));
+    aNode.append(UI.formatBriefsWithHeading(
+                   _("Fields"),
+                   DBUtils.filterDocsByType(aDocs, "field")));
+    aNode.append(UI.formatBriefsWithHeading(
+                   _("Getters"),
+                   DBUtils.filterDocsByType(aDocs, "getter")));
+    aNode.append(UI.formatBriefsWithHeading(
+                   _("Setters"),
+                   DBUtils.filterDocsByType(aDocs, "setter")));
   }
 };
 
@@ -116,6 +138,9 @@ Widgets.itemToolbar.close = {
   icon: "close",
   hoverIcon: "closethick",
   tooltip: _("Close"),
+  // be last
+  desiredPosition: 1000000,
+  appliesTo: true,
   onClick: function(aDocWidget, aThing) {
     UI.remove(aDocWidget);
   }
@@ -125,5 +150,9 @@ Widgets.itemToolbar.remember = {
   icon: "plus",
   hoverIcon: "plusthick",
   tooltip: _("Remember for later"),
+  desiredPosition: -1000000,
+  appliesTo: true,
+  onClick: function(aDocWidget, aThing) {
 
+  }
 };

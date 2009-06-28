@@ -176,27 +176,37 @@ var fldb = {
     this._activeProcessors.splice(idx, 1);
   },
 
-  _fileCache: {},
-  clearCache: function() {
-    this._fileCache = {};
-  },
   getFileDocs: function(aWhat, aFilename, aCallback) {
-    if (aFilename in this._fileCache) {
-      aCallback(this._fileCache[aFilename]);
-      return;
-    }
-
-    DB.view(design + "/" + aWhat + "_by_file", {
-              key: aFilename,
+    this.getDocs(aWhat + "_by_file", aFilename, aCallback);
+  },
+  getDocs: function(aViewName, aKey, aCallback) {
+    DB.view(design + "/" + aViewName, {
+              key: aKey,
               include_docs: true,
               success: function(data) {
                 var docs = [];
                 var rows = data.rows;
                 for (var i = 0; i < rows.length; i++)
                   docs.push(rows[i].doc);
-                fldb._fileCache[aFilename] = docs;
                 aCallback(docs);
               },
             });
   }
+};
+
+var DBUtils = {
+  /**
+   * Filter a set of documents by their type.
+   */
+  filterDocsByType: function UI__filterDocsByType(aDocs, aType) {
+    var filtered = [];
+
+    for (var i = 0; i < aDocs.length; i++) {
+      var doc = aDocs[i];
+      if (doc.type == aType)
+        filtered.push(doc);
+    }
+
+    return filtered;
+  },
 };

@@ -20,14 +20,16 @@ var UI = {
    * @param aWhatClick the jquery-wrapped docthing where the click originated.
    */
   show: function UI_show(aThing, aWhatClicked) {
-    var widget = Widgets.body[aThing.type || "default"];
+    var widget = Widgets.body[aThing.type];
+    if (widget === undefined)
+      widget = Widgets.body.default;
 
     if (widget.prepareToShow)
       widget.prepareToShow(aThing, function(aExtra) {
                              UI._realShow(widget, aThing, aWhatClicked, aExtra);
                            });
     else
-      this._realShow(aThing, aWhatClicked);
+      this._realShow(widget, aThing, aWhatClicked);
   },
   _realShow: function UI__realShow(aWidget, aThing, aWhatClicked, aExtra) {
     var node = this._makeThingNode(aThing);
@@ -64,9 +66,14 @@ var UI = {
     tr.append($("<td></td>").append(summary));
     return tr;
   },
+  _compareNames: function (a, b) {
+    return a.name.localeCompare(b.name);
+  },
   formatBriefsWithHeading: function(aHeading, aThings) {
     if (!aThings.length)
       return $([]);
+
+    aThings.sort(this._compareNames);
 
     var nodes = $("<h3></h3>").text(aHeading);
 
@@ -86,28 +93,58 @@ var UI = {
     var node = $("<div></div>")
                .attr("id", aThing.type + "-" + aThing.fullName)
                .addClass("docthing");
+    var toolbar = $("<div></div>")
+      .addClass("docthing-toolbar")
+      .appendTo(node);
+
     $("<h2></h2>")
       .text(aThing.fullName)
       .addClass(aThing.type + "-name")
       .appendTo(node);
 
-    var toolbar = $("<div></div>")
-      .addClass("docthing-toolbar")
-      .appendTo(node);
+
+    this._makeToolbarWidgets(toolbar, aThing);
 
     return node;
   },
 
-  _filterDocsByType: function UI__filterDocsByType(aDocs, aType) {
-    var filtered = [];
 
-    for (var i = 0; i < aDocs.length; i++) {
-      var doc = aDocs[i];
-      if (doc.type == aType)
-        filtered.push(doc);
+  _compareWidgetsByPositionAndName:
+      function UI__compareWidgetsByPositionAndName(a, b) {
+    // use the icon as a proxy for name for now
+    if (a.desiredPosition == b.desiredPosition)
+      return a.icon.localeCompare(b.icon);
+    return a.desiredPosition - b.desiredPosition;
+  },
+  /**
+   * Construct the toolbar widgets for a given thing.
+   */
+  _makeToolbarWidgets: function(aToolbarNode, aThing) {
+    var widget;
+    var eligible = [];
+    for each (widget in Widgets.itemToolbar) {
+      if (widget.appliesTo === true ||
+          aThing.type in widget.appliesTo)
+        eligible.push(widget);
     }
 
-    return filtered;
+    eligible.sort(this._compareWidgetsByPositionAndName);
+
+    for (var iWidget = 0; iWidget < eligible.length; iWidget++) {
+      widget = eligible[iWidget];
+
+      this._makeToolbarWidget(widget, aThing).appendTo(aToolbarNode);
+    }
+  },
+  _makeToolbarWidget: function(aWidget, aThing) {
+    return $("<span></span>")
+      .addClass("ui-icon")
+      .addClass("ui-icon-" + aWidget.icon)
+      .click(function() {
+               var jThis = $(this);
+               aWidget.onClick(jThis.closest(".docthing"),
+                               jThis.data("what"));
+             });
   },
 
   /**
@@ -117,7 +154,8 @@ var UI = {
     if (aThing.summaryStream)
       return this.formatTextStream(aThing.summaryStream);
     if (!aThing.docStream)
-      return $("<span class='nodoc'>Not documented</span>");
+      return $("<span class='undocumented'></span>")
+        .text("Not documented");
 
     var stream = aThing.docStream[0].stream;
     if (aThing.docStream[0].type == "tag") {
