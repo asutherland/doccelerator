@@ -1,4 +1,7 @@
-/* add styles here */
+/*
+ * I am trying to base our colors off Radu Dineiu <radu.dineiu@gmail.com>'s
+ *  "rdark" vim colorscheme, which can be found at: http://ld.yi.org/vim/rdark/
+ */
 
 body {
   background: #000000;
@@ -21,14 +24,29 @@ ul {
   padding-left: 20px;
 }
 
+.inline-icon {
+  background-image:url(../css/ui-darkness/images/ui-icons_cccccc_256x240.png);
+  height:16px;
+  width:16px;
+  display: inline-block;
+  background-repeat:no-repeat;
+  overflow:hidden;
+  text-indent:-99999px;
+}
+
 .docthing {
-  background: #222222;
+  background: #1e2426;
+  color: #babdb6;
   -moz-border-radius-bottomleft:3px;
   -moz-border-radius-bottomright:3px;
   -moz-border-radius-topleft:3px;
   -moz-border-radius-topright:3px;
   padding: 0.5em;
   margin-bottom: 1em;
+}
+
+.collapsed:after {
+  content: "...";
 }
 
 .docthing h2 {
@@ -40,31 +58,31 @@ ul {
 }
 
 .file-name {
-  color: #ac66d5;
+  color: #729fcf;
 }
 
 .global-name {
-  color: #6f0aaa;
+  color: #ad7fa8;
 }
 
 .function-name {
-  color: #540ead;
+  color: #fcaf3e;
 }
 
 .class-name {
-  color: #9702a7;
+  color: #8ae234;
 }
 
 .method-name {
-  color: #540ead;
+  color: #fcaf3e;
 }
 
 .field-name {
-  color: #6f0aaa;
+  color: #ad7fa8;
 }
 
 .undocumented {
-  color: #aaaaaa;
+  color: #656763;
 }
 
 #sidebar .happybox h3 {

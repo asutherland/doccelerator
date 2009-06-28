@@ -194,7 +194,9 @@ function parse_comment(aComment, aNode) {
       let idxEndTag = line.indexOf(" ");
       curBlock = {type: "tag", tag: line.substring(1, idxEndTag),
                   text: line.substring(idxEndTag+1).trimLeft() };
-      blockStream.push(curBlock);
+      // do not put the block in the blockStream, as tags should not actually
+      //  be treated as part of the documentation stream.
+      // However, we will process them for side-effects in finishBlock.
     }
     // continuation of the block
     else if (lastIndent != -1 && curIndent >= lastIndent) {
@@ -211,7 +213,8 @@ function parse_comment(aComment, aNode) {
   }
   finishBlock();
 
-  aNode.docStream = blockStream;
+  if (blockStream.length)
+    aNode.docStream = blockStream;
 }
 
 /**

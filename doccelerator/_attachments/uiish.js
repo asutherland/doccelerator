@@ -69,13 +69,18 @@ var UI = {
   _compareNames: function (a, b) {
     return a.name.localeCompare(b.name);
   },
-  formatBriefsWithHeading: function(aHeading, aThings) {
+  formatBriefsWithHeading: function(aHeading, aThings, aCollapsed) {
     if (!aThings.length)
       return $([]);
 
     aThings.sort(this._compareNames);
 
-    var nodes = $("<h3></h3>").text(aHeading);
+    var nodes = $("<h3></h3>")
+      .text(aHeading)
+      .addClass("collapsable")
+      .click(function() {
+               $(this).toggleClass("collapsed").next().toggle();
+             });
 
     var tableNode = $("<table></table>");
     nodes = nodes.add(tableNode);
@@ -92,6 +97,7 @@ var UI = {
   _makeThingNode: function UI__makeThingNode(aThing) {
     var node = $("<div></div>")
                .attr("id", aThing.type + "-" + aThing.fullName)
+               .data("what", aThing)
                .addClass("docthing");
     var toolbar = $("<div></div>")
       .addClass("docthing-toolbar")
@@ -141,9 +147,9 @@ var UI = {
       .addClass("ui-icon")
       .addClass("ui-icon-" + aWidget.icon)
       .click(function() {
-               var jThis = $(this);
-               aWidget.onClick(jThis.closest(".docthing"),
-                               jThis.data("what"));
+               var jDocThing = $(this).closest(".docthing");
+               aWidget.onClick(jDocThing,
+                               jDocThing.data("what"));
              });
   },
 
@@ -159,7 +165,7 @@ var UI = {
 
     var stream = aThing.docStream[0].stream;
     if (aThing.docStream[0].type == "tag") {
-      stream = stream.concat();
+      stream = aThing.docStream[0].text;
       stream.unshift(aThing.docStream[0].tag + " ");
     }
     return $("<span></span>").append(this.formatTextStream(stream, true));

@@ -9,13 +9,18 @@ var Widgets = {
    */
   body: {
   },
+  _initialized: false,
   refreshAll: function() {
     var key, widget;
+    var initialized = this._initialized;
     for (key in Widgets.sidebar) {
       widget = Widgets.sidebar[key];
+      if (!initialized && "init" in widget)
+        widget.init();
       if ("refresh" in widget)
         widget.refresh();
     }
+    this._initialized = true;
   },
   /**
    * Things that go in the toolbar that shows up for each thing in the body.
@@ -86,6 +91,11 @@ Widgets.sidebar.files = {
   }
 };
 
+Widgets.sidebar.remember = {
+  init: function() {
+  }
+};
+
 Widgets.body.default = {
   show: function(aNode, aThing) {
     aNode.append(UI.formatDocStream(aThing.docStream));
@@ -102,7 +112,8 @@ Widgets.body.file = {
   show: function(aNode, aFile, aDocs) {
     aNode.append(UI.formatBriefsWithHeading(
                    _("Globals"),
-                   DBUtils.filterDocsByType(aDocs, "global")));
+                   DBUtils.filterDocsByType(aDocs, "global"),
+                   true));
     aNode.append(UI.formatBriefsWithHeading(
                    _("Classes"),
                    DBUtils.filterDocsByType(aDocs, "class")));
@@ -136,7 +147,6 @@ Widgets.body["class"] = {
 
 Widgets.itemToolbar.close = {
   icon: "close",
-  hoverIcon: "closethick",
   tooltip: _("Close"),
   // be last
   desiredPosition: 1000000,
@@ -147,12 +157,23 @@ Widgets.itemToolbar.close = {
 };
 
 Widgets.itemToolbar.remember = {
-  icon: "plus",
-  hoverIcon: "plusthick",
+  icon: "heart",
   tooltip: _("Remember for later"),
   desiredPosition: -1000000,
   appliesTo: true,
   onClick: function(aDocWidget, aThing) {
-
+    var node = $("<li></li>");
+    $("<span></span>")
+      .text(aThing.fullName)
+      .addClass(aThing.type + "-name")
+      .data("what", aThing)
+      .click(UI.showClick)
+      .appendTo(node);
+    $("<span class='inline-icon ui-icon-trash'></span>")
+      .click(function () {
+               $(this).parent().remove();
+             })
+      .appendTo(node);
+    node.appendTo("#remember .content");
   }
 };
