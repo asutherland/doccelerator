@@ -198,11 +198,13 @@ function parse_comment(aComment, aNode) {
     }
     // bullet
     else if (line[0] == "-") {
+      finishBlock();
       curBlock = {type: "bullet", text: line.substring(1).trimLeft() };
       blockStream.push(curBlock);
     }
     // some tag thing
     else if (line[0] == "@") {
+      finishBlock();
       let idxEndTag = line.indexOf(" ");
       curBlock = {type: "tag", tag: line.substring(1, idxEndTag),
                   text: line.substring(idxEndTag+1).trimLeft() };

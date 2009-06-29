@@ -256,25 +256,21 @@ UI.format = {
 
     var nodes = $([]);
 
-    var dlNode;
+    var ulNode;
     for (var iStream = 0; iStream < aStream.length; iStream++) {
       var block = aStream[iStream];
       if (block.type == "para") {
         nodes = nodes.add($("<p></p>").append(this.textStream(block.stream)));
+        ulNode = null;
       }
-      else if (block.type == "tag") {
-        if (!dlNode) {
-          dlNode = $("<dl></dl>");
-          nodes = nodes.add(dlNode);
+      else if (block.type == "bullet") {
+        if (!ulNode) {
+          ulNode = $("<ul></ul>");
+          nodes = nodes.add(ulNode);
         }
-        $("<dt></dt>")
-          .text(block.tag)
-          .appendTo(dlNode);
-        // We will need to specialize on fancy tags in the future, although
-        //  they might not have a type of "tag" to help distinguish them.
-        $("<dd></dd>")
+        $("<li></li>")
           .append(this.textStream(block.stream))
-          .appendTo(dlNode);
+          .appendTo(ulNode);
       }
     }
     return nodes;
@@ -285,7 +281,22 @@ UI.format = {
    *  nodes suitable for appending to a parent node.
    */
   paramsWithHeading: function UI_format_paramsWithHeading(aThing) {
+    var nodes = $([]);
 
+    if (!dlNode) {
+          dlNode = $("<dl></dl>");
+          nodes.push(dlNode);
+        }
+        $("<dt></dt>")
+          .text(block.tag)
+          .appendTo(dlNode);
+        // We will need to specialize on fancy tags in the future, although
+        //  they might not have a type of "tag" to help distinguish them.
+        $("<dd></dd>")
+          .append(this.textStream(block.stream))
+          .appendTo(dlNode);
+
+    return nodes;
   }
 };
 

@@ -146,11 +146,11 @@ Widgets.body["class"] = {
   }
 };
 
-Widgets.body["method"] = {
+Widgets.body.method = {
   show: function(aNode, aMethod) {
     aNode.append(UI.format.docStream(aMethod.docStream));
 
-    aNode.append(UI.format.paramsWithHeading(aMethod));
+    //aNode.append(UI.format.paramsWithHeading(aMethod));
   }
 };
 
