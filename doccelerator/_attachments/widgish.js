@@ -221,18 +221,8 @@ Widgets.body["class"] = {
   show: function(aNode, aClass, aDocs) {
     aNode.append(UI.format.docStream(aClass.docStream, aClass));
 
-    aNode.append(UI.format.briefsWithHeading(
-                   _("Methods"),
-                   DBUtils.filterDocsByType(aDocs, "method")));
-    aNode.append(UI.format.briefsWithHeading(
-                   _("Fields"),
-                   DBUtils.filterDocsByType(aDocs, "field")));
-    aNode.append(UI.format.briefsWithHeading(
-                   _("Getters"),
-                   DBUtils.filterDocsByType(aDocs, "getter")));
-    aNode.append(UI.format.briefsWithHeading(
-                   _("Setters"),
-                   DBUtils.filterDocsByType(aDocs, "setter")));
+    var groups = UIUtils.categorizeClassParts(aDocs);
+    aNode.append(UI.format.categorizedBriefs(groups));
   }
 };
 
@@ -298,5 +288,15 @@ Widgets.itemToolbar.referencedBy = {
       thing: aThing,
     };
     UI.show(refThing, aDocWidget);
+  }
+};
+
+Widgets.itemToolbar.comment = {
+  icon: "pencil",
+  label: _("Comment"),
+  desiredPosition: 20,
+  appliesTo: true,
+  onClick: function(aDocWidget, aThing) {
+
   }
 };

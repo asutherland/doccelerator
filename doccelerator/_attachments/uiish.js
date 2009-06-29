@@ -230,6 +230,14 @@ UI.format = {
 
     return nodes;
   },
+  categorizedBriefs: function UI_format_categorizedBriefs(aGroups) {
+    var nodes = $([]);
+    for (var i = 0; i < aGroups.length; i++) {
+      var group = aGroups[i];
+      nodes = nodes.add(this.briefsWithHeading(group.name, group.docs));
+    }
+    return nodes;
+  },
 
   /**
    * @return a jQuery wrapped DOM node
@@ -484,5 +492,77 @@ var UIUtils = {
     }
 
     return makeSimpleTree(fullTree, "");
+  },
+
+  PREC_VIS_MULT: 64,
+  VISIBILITY_PRECEDENCES: {
+    "public": 0,
+    "protected": 1,
+    "private": 2
+  },
+  VISIBILITY_NAMES: {
+    "public": _("Public"),
+    "protected": _("Protected"),
+    "private": _("Private"),
+  },
+  PREC_TYPE_MULT: 8,
+  EXPLICIT_PRECEDENCE: 0,
+  TYPE_PRECEDENCES: {
+    "method": 1,
+    "field": 2,
+    "getter": 3,
+    "setter": 3,
+  },
+  GROUP_NAMES_ON_TYPE: {
+    "method": _("Methods"),
+    "field": _("Fields"),
+    "getter": _("Getters/Setters"),
+    "setter": _("Getters/Setters"),
+  },
+
+  categorizeClassParts: function(aDocs) {
+    var groups = {};
+    var groupList = [];
+    for (var iDoc = 0; iDoc < aDocs.length; iDoc++) {
+      var doc = aDocs[iDoc];
+
+      var groupName, groupPrecedence;
+      if (doc.groupName) {
+        groupName = doc.groupName + " (" +
+                      this.VISIBILITY_NAMES[doc.visibility] + ")";
+        groupPrecedence = this.VISIBILITY_PRECEDENCES[doc.visibility] *
+                          this.PREC_VIS_MULT;
+      }
+      else {
+        groupName = this.GROUP_NAMES_ON_TYPE[doc.type] + " (" +
+                      this.VISIBILITY_NAMES[doc.visibility] + ")";
+        groupPrecedence = this.VISIBILITY_PRECEDENCES[doc.visibility] *
+                            this.PREC_VIS_MULT +
+                          this.TYPE_PRECEDENCES[doc.type] *
+                            this.PREC_TYPE_MULT;
+      }
+      var groupKey = groupName + "-" + groupPrecedence;
+      var group;
+      if (!(groupKey in groups)) {
+        group = groups[groupKey] = {
+          name: groupName,
+          precedence: groupPrecedence,
+          docs: []
+        };
+        groupList.push(group);
+      }
+      else {
+        group = groups[groupKey];
+      }
+
+      group.docs.push(doc);
+    }
+
+    groupList.sort(function (a, b) {
+                     if (a.precedence == b.precedence)
+                       return a.name.localeCompare(b.name);
+                     return a.precedence - b.precedence;
+                   });
+    return groupList;
   }
 };

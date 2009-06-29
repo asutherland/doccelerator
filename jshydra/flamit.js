@@ -141,7 +141,7 @@ var TagParsers = {
       }
     }
 
-    aResObj.stream = parse_comment_text(aText);
+    aResObj.stream = parse_comment_text(aText, aNode);
   },
   /**
    * The @param tag.  Allowed syntaxes:
@@ -160,7 +160,7 @@ var TagParsers = {
 
     this._paramReturnCommon(aBlock.text, param, aBlock, aNode, true);
   },
-  returns: function TagParser_param(aBlock, aNode) {
+  returns: function TagParser_return(aBlock, aNode) {
     aNode.returns = {};
 
     this._paramReturnCommon(aBlock.text, aNode.returns, aBlock, aNode);
@@ -258,7 +258,6 @@ function parse_comment(aComment, aNode) {
       }
     }
 
-
     // blank line
     if (curIndent == -1) {
       finishBlock();
@@ -274,8 +273,13 @@ function parse_comment(aComment, aNode) {
     else if (line[0] == "@") {
       finishBlock();
       let idxEndTag = line.indexOf(" ");
-      curBlock = {type: "tag", tag: line.substring(1, idxEndTag),
-                  text: line.substring(idxEndTag+1).trimLeft() };
+      curBlock = {type: "tag",
+                  tag: idxEndTag != -1 ?
+                         line.substring(1, idxEndTag) :
+                         line.substring(1),
+                  text: idxEndTag != -1 ?
+                          line.substring(idxEndTag+1).trimLeft() :
+                          ""};
       // do not put the block in the blockStream, as tags should not actually
       //  be treated as part of the documentation stream.
       // However, we will process them for side-effects in finishBlock.
