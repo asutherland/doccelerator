@@ -203,6 +203,16 @@ Widgets.body.reference = {
   }
 };
 
+Widgets.body.references = {
+  prepareToShow: function(aReferences, aCallback) {
+    fldb.getDocs("references", aReferences.thing.fullName, aCallback);
+  },
+  show: function(aNode, aReferences, aDocs) {
+    aNode.append(UI.format.briefsWithHeading(
+                   _("Referenced By"),
+                   aDocs));
+  }
+};
 
 Widgets.body["class"] = {
   prepareToShow: function(aClass, aCallback) {
@@ -268,5 +278,25 @@ Widgets.itemToolbar.remember = {
              })
       .appendTo(node);
     node.appendTo("#remember .content");
+  }
+};
+
+Widgets.itemToolbar.referencedBy = {
+  icon: "search",
+  label: _("Referenced By"),
+  desiredPosition: 10,
+  appliesTo: {
+    file: false,
+    _default: true
+  },
+  onClick: function(aDocWidget, aThing) {
+    var refThing = {
+      type: "references",
+      // the fullName and name become simply a display hack for now
+      fullName: _("references:") + aThing.fullName,
+      name: aThing.fullName,
+      thing: aThing,
+    };
+    UI.show(refThing, aDocWidget);
   }
 };

@@ -82,6 +82,10 @@ td {
   color: #656763;
 }
 
+.docthing-toolbar span:hover .inline-icon {
+  background-image: url(../css/ui-darkness/images/ui-icons_ffffff_256x240.png);
+}
+
 .docthing-toolbar span:hover {
   color: #fcaf3e;
 }

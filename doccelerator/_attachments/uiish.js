@@ -154,7 +154,10 @@ var UI = {
     var eligible = [];
     for each (widget in Widgets.itemToolbar) {
       if (widget.appliesTo === true ||
-          aThing.type in widget.appliesTo)
+          ((aThing.type in widget.appliesTo) &&
+           widget.appliesTo[aThing.type]) ||
+          (!(aThing.type in widget.appliesTo) &&
+           widget.appliesTo._default))
         eligible.push(widget);
     }
 
