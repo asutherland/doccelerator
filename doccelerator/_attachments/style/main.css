@@ -53,6 +53,18 @@ ul {
   margin: 0;
 }
 
+table {
+  border-spacing: 0;
+}
+
+td {
+  padding: 2px;
+}
+
+.docthing tr:hover {
+  background: #2c3032;
+}
+
 .docthing-toolbar {
   float: right;
   text-align: right;
@@ -85,6 +97,14 @@ ul {
 }
 
 .field-name {
+  color: #ad7fa8;
+}
+
+.getter-name {
+  color: #ad7fa8;
+}
+
+.setter-name {
   color: #ad7fa8;
 }
 
