@@ -179,6 +179,12 @@ var fldb = {
   getFileDocs: function(aWhat, aFilename, aCallback) {
     this.getDocs(aWhat + "_by_file", aFilename, aCallback);
   },
+  rowsToDocs: function(aRows) {
+    var docs = [];
+    for (var i = 0; i < aRows.length; i++)
+      docs.push(aRows[i].doc);
+    return docs;
+  },
   getDocs: function(aViewName, aKey, aCallback) {
     DB.view(design + "/" + aViewName, {
               key: aKey,
@@ -189,6 +195,15 @@ var fldb = {
                 for (var i = 0; i < rows.length; i++)
                   docs.push(rows[i].doc);
                 aCallback(docs);
+              },
+            });
+  },
+  getRows: function(aViewName, aKey, aCallback) {
+    DB.view(design + "/" + aViewName, {
+              key: aKey,
+              include_docs: true,
+              success: function(data) {
+                aCallback(data.rows);
               },
             });
   }

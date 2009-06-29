@@ -29,6 +29,10 @@ ul {
   padding-left: 20px;
 }
 
+a {
+  cursor: pointer;
+}
+
 .inline-icon {
   background-image:url(../css/ui-darkness/images/ui-icons_cccccc_256x240.png);
   height:16px;
@@ -64,6 +68,7 @@ table {
 
 td {
   padding: 2px 4px;
+  vertical-align: top;
 }
 
 .docthing tr:hover {
@@ -93,6 +98,10 @@ td {
   color: #fcaf3e;
 }
 
+.type-name {
+  color: #8ae234;
+}
+
 .class-name {
   color: #8ae234;
 }
@@ -115,6 +124,11 @@ td {
 
 .param-name {
   color: #ad7fa8;
+}
+
+.reference-name {
+  color: #cccccc;
+  font-weight: bold;
 }
 
 .undocumented {

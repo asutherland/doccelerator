@@ -7,7 +7,15 @@ var Log = {
   }
 };
 
+// intentionally not global
+var _RE_PERCENT_S = /%s/;
 function _(aStr) {
+  if (arguments.length == 1)
+    return aStr;
+
+  for (var iArg = 1; iArg < arguments.length; iArg++) {
+    aStr = aStr.replace(_RE_PERCENT_S, arguments[iArg]);
+  }
   return aStr;
 }
 
@@ -25,9 +33,14 @@ var UI = {
       widget = Widgets.body.default;
 
     if (widget.prepareToShow)
-      widget.prepareToShow(aThing, function(aExtra) {
-                             UI._realShow(widget, aThing, aWhatClicked, aExtra);
-                           });
+      widget.prepareToShow(
+        aThing,
+        function(aExtra, aReplacementThing) {
+          if (aReplacementThing)
+            UI.show(aReplacementThing, aWhatClicked);
+          else
+            UI._realShow(widget, aThing, aWhatClicked, aExtra);
+        });
     else
       this._realShow(widget, aThing, aWhatClicked);
   },
@@ -70,7 +83,7 @@ var UI = {
       if (tooHuge)
         node.effect("highlight");
       else
-        node.show("blind");
+        node.show("drop");
     }
     else {
       $.scrollTo(node, 400);
@@ -83,7 +96,7 @@ var UI = {
   },
 
   remove: function UI_remove(aDocThing) {
-    aDocThing.hide("blind", undefined, undefined, function() {
+    aDocThing.hide("drop", undefined, undefined, function() {
                      aDocThing.remove();
                    });
   },
@@ -175,15 +188,17 @@ var UI = {
 };
 
 UI.format = {
+  link: function UI_format_link(aThing) {
+    return $("<a></a>")
+      .text(aThing.name)
+      .data("what", aThing)
+      .addClass(aThing.type + "-name")
+      .click(UI.showClick);
+  },
   brief: function UI_format_brief(aThing) {
-    var link = $("<a></a>")
-               .text(aThing.name)
-               .data("what", aThing)
-               .addClass(aThing.type + "-name")
-               .click(UI.showClick);
     var summary = this.summary(aThing);
     var tr = $("<tr></tr>");
-    tr.append($("<td></td>").append(link));
+    tr.append($("<td></td>").append(this.link(aThing)));
     tr.append($("<td></td>").append(summary));
     return tr;
   },
@@ -218,7 +233,7 @@ UI.format = {
    */
   summary: function UI_format_summary(aThing) {
     if (aThing.summaryStream)
-      return this.textStream(aThing.summaryStream);
+      return this.textStream(aThing.summaryStream, aThing);
     if (!aThing.docStream)
       return $("<span class='undocumented'></span>")
         .text("Not documented");
@@ -228,7 +243,7 @@ UI.format = {
       stream = aThing.docStream[0].text;
       stream.unshift(aThing.docStream[0].tag + " ");
     }
-    return $("<span></span>").append(this.textStream(stream, true));
+    return $("<span></span>").append(this.textStream(stream, aThing, true));
   },
 
   /**
@@ -237,7 +252,7 @@ UI.format = {
    *
    * @return a jQuery wrappet set of nodes.
    */
-  textStream: function UI_format_textStream(aTextStream, aMakeSummary) {
+  textStream: function UI_format_textStream(aTextStream, aThing, aMakeSummary) {
     if (!aTextStream)
       return $("<span class='nodoc'>No stream?</span>");
 
@@ -253,6 +268,7 @@ UI.format = {
           if (nextChar == ")" || nextChar == '"')
             periodPoint++;
           hunk = hunk.substring(0, periodPoint + 1);
+          foundTerminus = true;
         }
         nodes = nodes.add($("<span></span>").text(hunk));
         if (foundTerminus)
@@ -260,10 +276,11 @@ UI.format = {
       }
       else {
         if (hunk.type == "reference") {
-          nodes = nodes.add($("<a></a>")
-                    .text(hunk.reference)
-                    .data("what", hunk)
-                    .click(UI.showClick));
+          if (aThing.references && hunk.name in aThing.references)
+            hunk.fullName = aThing.references[hunk.name];
+          else
+            hunk.fullName = hunk.name;
+          nodes = nodes.add(this.link(hunk));
         }
       }
     }
@@ -275,7 +292,7 @@ UI.format = {
    * Given a docStream (usually found in a "docStream" attribute), render it to
    *  a list of p/dl nodes.
    */
-  docStream: function UI_format_docStream(aStream) {
+  docStream: function UI_format_docStream(aStream, aThing) {
     if (!aStream)
       return $("<span class='nodoc'>Not documented</span>");
 
@@ -285,7 +302,8 @@ UI.format = {
     for (var iStream = 0; iStream < aStream.length; iStream++) {
       var block = aStream[iStream];
       if (block.type == "para") {
-        nodes = nodes.add($("<p></p>").append(this.textStream(block.stream)));
+        nodes = nodes.add($("<p></p>").append(this.textStream(block.stream,
+                                                              aThing)));
         ulNode = null;
       }
       else if (block.type == "bullet") {
@@ -294,11 +312,19 @@ UI.format = {
           nodes = nodes.add(ulNode);
         }
         $("<li></li>")
-          .append(this.textStream(block.stream))
+          .append(this.textStream(block.stream, aThing))
           .appendTo(ulNode);
       }
     }
     return nodes;
+  },
+
+  typeFromName: function UI_format_type(aTypeName) {
+    var thing = {
+      type: "type",
+      name: aTypeName,
+    };
+    return this.link(thing);
   },
 
   /**
@@ -315,15 +341,32 @@ UI.format = {
       var param = aThing.params[iParam];
       var tr = $("<tr></tr>")
         .appendTo(tableNode);
-      $("<td></td>")
+
+      var paramName = $("<td></td>");
+      $("<span></span>")
         .text(param.name)
         .addClass("param-name")
+        .appendTo(paramName);
+      if (param.optional)
+        $("<span></span>")
+          .text(_("?"))
+          .addClass("optional-param")
+          .appendTo(paramName);
+      paramName.appendTo(tr);
+
+      var typeCol = $("<td></td>");
+      if (param.type)
+        typeCol.append(this.typeFromName(param.type));
+      typeCol
         .appendTo(tr);
-      $("<td></td>")
-        .text(param.type || "")
-        .appendTo(tr);
-      $("<td></td>")
-        .append(this.textStream(param.stream))
+
+      var description = $("<td></td>");
+      if (param.defaultValue)
+        $("<span></span>")
+          .text(_("(Default: %s) ", param.defaultValue))
+          .appendTo(description);
+      description
+        .append(this.textStream(param.stream, aThing))
         .appendTo(tr);
     }
 
@@ -338,7 +381,7 @@ UI.format = {
     var nodes = $("<h3></h3>")
       .text(_("Returns"));
     var streamNode = $("<div></div>")
-      .append(this.textStream(aThing.returns.stream));
+      .append(this.textStream(aThing.returns.stream, aThing));
     return nodes.add(streamNode);
   },
 };

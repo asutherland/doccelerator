@@ -77,7 +77,7 @@ Widgets.sidebar.files = {
         }
         else {
           $("<li></li>")
-            .append($("<span></span>")
+            .append($("<a></a>")
               .text(subStray.label)
               .addClass("file-name")
               .data("what", subStray)
@@ -98,9 +98,9 @@ Widgets.sidebar.remember = {
   }
 };
 
-Widgets.body.default = {
+Widgets.body["default"] = {
   show: function(aNode, aThing) {
-    aNode.append(UI.format.docStream(aThing.docStream));
+    aNode.append(UI.format.docStream(aThing.docStream, aThing));
   }
 };
 
@@ -125,12 +125,91 @@ Widgets.body.file = {
   }
 };
 
+/**
+ * Bounces types to the proper widget display after retrieving the type info.
+ * Types are merely abstract references where we are assuming there is an
+ *  underlying type.
+ */
+Widgets.body.type = {
+  prepareToShow: function(aType, aCallback) {
+    fldb.getDocs("by_type", aType.name, function(docs) {
+                   // if there is just one match, use the special callback
+                   //  mechanism to cause show to show something else.
+                   if (docs.length == 1)
+                     aCallback(null, docs[0]);
+                   else
+                     aCallback(docs);
+                 });
+  },
+  show: function(aNode, aType, aDocs) {
+    // if we are here, then aDocs.length == 0 or > 1
+
+    // Show an unhelpful failure block for nothing found
+    if (aDocs.length == 0) {
+      $("<span></span>")
+        .text(_("Unknown type. Sorry you had to find out this way."))
+        .appendTo(aNode);
+      return;
+    }
+
+    // otherwise, should a conflict resolution block...
+    aNode.append(UI.format.briefsWithHeading(
+                   _("Conflicting Types"),
+                   aDocs));
+  }
+};
+
+/**
+ * Similar to type, except we bounce based on name lookup and bias towards
+ *  fullName over just name to avoid erroneous shadowing.
+ */
+Widgets.body.reference = {
+  prepareToShow: function(aReference, aCallback) {
+    fldb.getRows("by_name", aReference.fullName, function(rows) {
+                   // if there is just one match, use the special callback
+                   //  mechanism to cause show to show something else.
+                   if (rows.length == 1)
+                     return aCallback(null, rows[0].doc);
+                   // just one fullName match?  use it
+                   var fullNameRows =
+                     $.grep(rows, function(aRow) {
+                              return aRow.value;
+                            });
+                   if (fullNameRows.length == 1)
+                     return aCallback(null, fullNameRows[0].doc);
+                   // conflict time! :(
+                   if (fullNameRows.length)
+                     return aCallback(fullNameRows);
+                   else
+                     return aCallback(rows);
+                 });
+  },
+  show: function(aNode, aType, aRows) {
+    var docs = fldb.rowsToDocs(aRows);
+    // if we are here, then docs.length == 0 or > 1
+
+    // Show an unhelpful failure block for nothing found
+    if (docs.length == 0) {
+      $("<span></span>")
+        .text(_("Unknown reference. Sorry you had to find out this way."))
+        .appendTo(aNode);
+      return;
+    }
+
+    // otherwise, should a conflict resolution block...
+    aNode.append(UI.format.briefsWithHeading(
+                   _("Conflicting Types"),
+                   docs));
+  }
+};
+
+
 Widgets.body["class"] = {
   prepareToShow: function(aClass, aCallback) {
     fldb.getDocs("by_parent", aClass.fullName, aCallback);
   },
   show: function(aNode, aClass, aDocs) {
-    aNode.append(UI.format.docStream(aClass.docStream));
+    aNode.append(UI.format.docStream(aClass.docStream, aClass));
 
     aNode.append(UI.format.briefsWithHeading(
                    _("Methods"),
@@ -149,7 +228,7 @@ Widgets.body["class"] = {
 
 Widgets.body.method = {
   show: function(aNode, aMethod) {
-    aNode.append(UI.format.docStream(aMethod.docStream));
+    aNode.append(UI.format.docStream(aMethod.docStream, aMethod));
 
     if (aMethod.params)
       aNode.append(UI.format.paramsWithHeading(aMethod));

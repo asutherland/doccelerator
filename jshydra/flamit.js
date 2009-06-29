@@ -78,9 +78,10 @@ var BlockParsers = {
 };
 
 var TagParsers = {
-  RE_OPTIONAL: /^\[optional\] /,
+  RE_OPTIONAL: /^\[([^\]=]+)(?:=([^\]]+))?\] /,
   _paramReturnCommon: function TagParser_paramReturnCommon(aText, aResObj,
-                                                           aBlock, aNode) {
+                                                           aBlock, aNode,
+                                                           aNeedsName) {
     // next there may be an optional type in braces
     if (aText[0] == '{') {
       let idxRBrace = aText.indexOf('}');
@@ -91,17 +92,35 @@ var TagParsers = {
     }
 
     // there may be an "[optional]" decoration
-    if ((aResObj.optional = this.RE_OPTIONAL.test(aText)))
-      aText = aText.substring(11);
+    if (aNeedsName){
+      let optMatch = this.RE_OPTIONAL.exec(aText);
+      if (optMatch) {
+        aResObj.optional = true;
+        if (optMatch[2])
+          aResObj.defaultValue = optMatch[2];
+        aResObj.name = optMatch[1];
+        aText = aText.substring(optMatch[0].length);
+      }
+      else {
+        aResObj.optional = false;
+        let idxSpace = aText.indexOf(" ");
+        if (idxSpace == -1)
+          idxSpace = aText.length;
+        aResObj.name = aText.substring(0, idxSpace);
+        aText = aText.substring(idxSpace+1).trimLeft();
+      }
+    }
 
     aResObj.stream = parse_comment_text(aText);
   },
   /**
    * The @param tag.  Allowed syntaxes:
    * - "@param parameterName comment""
-   * - "@param parameterName {type} comment..."
-   * - "@param parameterName [optional] comment..."
-   * - "@param parameterName {type} [optional] comment..."
+   * - "@param {type} parameterName comment..."
+   * - "@param [parameterName] comment..."
+   * - "@param {type} [parameterName] comment..."
+   * - "@param [parameterName=default] comment..."
+   * - "@param {type} [parameterName=default] comment..."
    */
   param: function TagParser_param(aBlock, aNode) {
     if (aNode.params === undefined)
@@ -113,14 +132,9 @@ var TagParsers = {
 
     // the first thing should be the parameter name...
     {
-      let idxSpace = text.indexOf(" ");
-      if (idxSpace == -1)
-        idxSpace = text.length;
-      param.name = text.substring(0, idxSpace);
-      text = text.substring(idxSpace+1).trimLeft();
     }
 
-    this._paramReturnCommon(text, param, aBlock, aNode);
+    this._paramReturnCommon(text, param, aBlock, aNode, true);
   },
   returns: function TagParser_param(aBlock, aNode) {
     aNode.returns = {};
@@ -140,7 +154,7 @@ function parse_comment_text(aText, aNode) {
   while ((match = REFERENCE_REGEX.exec(aText)) != null) {
     if (match.index > curIndex)
       stream.push(aText.substring(curIndex, match.index));
-    stream.push({type: "reference", reference: match[1]});
+    stream.push({type: "reference", name: match[1]});
     NodeUtils.references(aNode, match[1]);
     curIndex = REFERENCE_REGEX.lastIndex;
   }
