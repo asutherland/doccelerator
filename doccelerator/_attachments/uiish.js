@@ -36,12 +36,41 @@ var UI = {
 
     aWidget.show(node, aThing, aExtra);
 
-    node.hide();
+    // - Figure out the insertion point and its visibility.
+    // We want to make sure that if the user clicks on something that they can
+    //  see it.  Our current heuristic is that if they will not be able to see
+    //  it, we inject it without animation and scroll to it.  If they can see
+    //  it, we visually expand it using "blind".
+
+    // Find out where it will be inserted
+    var insertionY;
+    if (aWhatClicked && aWhatClicked.length)
+      insertionY = aWhatClicked.offset().top + aWhatClicked.height();
+    else
+      insertionY = 0;
+
+    var docTop = $(window).scrollTop(), docBottom = docTop + $(window).height();
+    // require some extra space so the thing can be somewhat visible
+    var visible = (insertionY >= docTop + 60 && insertionY <= docBottom - 60);
+
+    // if the insertion point is visible hide it so we can show it
+    if (visible)
+      node.hide();
+
+    // insert it however
     if (aWhatClicked && aWhatClicked.length)
       aWhatClicked.after(node);
     else
       $("#body").prepend(node);
-    node.show("blind");
+
+    // animate it however
+    if (visible)
+      node.show("blind");
+    else {
+      $.scrollTo(node, 400, {onAfter: function() {
+                               node.effect("highlight", "slow");
+                             }});
+    }
   },
   showClick: function UI_showClick(aEvent) {
     UI.show($(this).data("what"),
@@ -52,43 +81,6 @@ var UI = {
     aDocThing.hide("blind", undefined, undefined, function() {
                      aDocThing.remove();
                    });
-  },
-
-  formatBrief: function(aThing) {
-    var link = $("<a></a>")
-               .text(aThing.name)
-               .data("what", aThing)
-               .addClass(aThing.type + "-name")
-               .click(this.showClick);
-    var summary = this.formatSummary(aThing);
-    var tr = $("<tr></tr>");
-    tr.append($("<td></td>").append(link));
-    tr.append($("<td></td>").append(summary));
-    return tr;
-  },
-  _compareNames: function (a, b) {
-    return a.name.localeCompare(b.name);
-  },
-  formatBriefsWithHeading: function(aHeading, aThings, aCollapsed) {
-    if (!aThings.length)
-      return $([]);
-
-    aThings.sort(this._compareNames);
-
-    var nodes = $("<h3></h3>")
-      .text(aHeading)
-      .addClass("collapsable")
-      .click(function() {
-               $(this).toggleClass("collapsed").next().toggle();
-             });
-
-    var tableNode = $("<table></table>");
-    nodes = nodes.add(tableNode);
-    for (var iThing = 0; iThing < aThings.length; iThing++) {
-      tableNode.append(this.formatBrief(aThings[iThing]));
-    }
-
-    return nodes;
   },
 
   /**
@@ -161,12 +153,53 @@ var UI = {
     return widget;
   },
 
+};
+
+UI.format = {
+  brief: function UI_format_brief(aThing) {
+    var link = $("<a></a>")
+               .text(aThing.name)
+               .data("what", aThing)
+               .addClass(aThing.type + "-name")
+               .click(UI.showClick);
+    var summary = this.summary(aThing);
+    var tr = $("<tr></tr>");
+    tr.append($("<td></td>").append(link));
+    tr.append($("<td></td>").append(summary));
+    return tr;
+  },
+  _compareNames: function (a, b) {
+    return a.name.localeCompare(b.name);
+  },
+  briefsWithHeading:
+      function UI_format_briefsWithHeading(aHeading, aThings, aCollapsed) {
+    if (!aThings.length)
+      return $([]);
+
+    aThings.sort(this._compareNames);
+
+    var nodes = $("<h3></h3>")
+      .text(aHeading)
+      .addClass("collapsable")
+      .click(function() {
+               $(this).toggleClass("collapsed").next().toggle();
+             });
+
+    var tableNode = $("<table></table>");
+    nodes = nodes.add(tableNode);
+    for (var iThing = 0; iThing < aThings.length; iThing++) {
+      tableNode.append(this.brief(aThings[iThing]));
+    }
+
+    return nodes;
+  },
+
   /**
    * @return a jQuery wrapped DOM node
    */
-  formatSummary: function UI_formatSummary(aThing) {
+  summary: function UI_format_summary(aThing) {
     if (aThing.summaryStream)
-      return this.formatTextStream(aThing.summaryStream);
+      return this.textStream(aThing.summaryStream);
     if (!aThing.docStream)
       return $("<span class='undocumented'></span>")
         .text("Not documented");
@@ -176,7 +209,7 @@ var UI = {
       stream = aThing.docStream[0].text;
       stream.unshift(aThing.docStream[0].tag + " ");
     }
-    return $("<span></span>").append(this.formatTextStream(stream, true));
+    return $("<span></span>").append(this.textStream(stream, true));
   },
 
   /**
@@ -185,7 +218,7 @@ var UI = {
    *
    * @return a jQuery wrappet set of nodes.
    */
-  formatTextStream: function UI_formatTextStream(aTextStream, aMakeSummary) {
+  textStream: function UI_format_textStream(aTextStream, aMakeSummary) {
     if (!aTextStream)
       return $("<span class='nodoc'>No stream?</span>");
 
@@ -217,7 +250,7 @@ var UI = {
    * Given a docStream (usually found in a "docStream" attribute), render it to
    *  a list of p/dl nodes.
    */
-  formatDocStream: function UI_formatDocStream(aStream) {
+  docStream: function UI_format_docStream(aStream) {
     if (!aStream)
       return $("<span class='nodoc'>Not documented</span>");
 
@@ -227,7 +260,7 @@ var UI = {
     for (var iStream = 0; iStream < aStream.length; iStream++) {
       var block = aStream[iStream];
       if (block.type == "para") {
-        nodes = nodes.add($("<p></p>").append(this.formatTextStream(block.stream)));
+        nodes = nodes.add($("<p></p>").append(this.textStream(block.stream)));
       }
       else if (block.type == "tag") {
         if (!dlNode) {
@@ -240,12 +273,20 @@ var UI = {
         // We will need to specialize on fancy tags in the future, although
         //  they might not have a type of "tag" to help distinguish them.
         $("<dd></dd>")
-          .append(this.formatTextStream(block.stream))
+          .append(this.textStream(block.stream))
           .appendTo(dlNode);
       }
     }
     return nodes;
   },
+
+  /**
+   * Given a thing, format its parameters, returning a jQuery collection of
+   *  nodes suitable for appending to a parent node.
+   */
+  paramsWithHeading: function UI_format_paramsWithHeading(aThing) {
+
+  }
 };
 
 var UIUtils = {

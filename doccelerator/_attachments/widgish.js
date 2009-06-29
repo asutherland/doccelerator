@@ -99,7 +99,7 @@ Widgets.sidebar.remember = {
 
 Widgets.body.default = {
   show: function(aNode, aThing) {
-    aNode.append(UI.formatDocStream(aThing.docStream));
+    aNode.append(UI.format.docStream(aThing.docStream));
   }
 };
 
@@ -111,14 +111,14 @@ Widgets.body.file = {
     fldb.getFileDocs("interesting", aFile.name, aCallback);
   },
   show: function(aNode, aFile, aDocs) {
-    aNode.append(UI.formatBriefsWithHeading(
+    aNode.append(UI.format.briefsWithHeading(
                    _("Globals"),
                    DBUtils.filterDocsByType(aDocs, "global"),
                    true));
-    aNode.append(UI.formatBriefsWithHeading(
+    aNode.append(UI.format.briefsWithHeading(
                    _("Classes"),
                    DBUtils.filterDocsByType(aDocs, "class")));
-    aNode.append(UI.formatBriefsWithHeading(
+    aNode.append(UI.format.briefsWithHeading(
                    _("Functions"),
                    DBUtils.filterDocsByType(aDocs, "function")));
   }
@@ -129,20 +129,28 @@ Widgets.body["class"] = {
     fldb.getDocs("by_parent", aClass.fullName, aCallback);
   },
   show: function(aNode, aClass, aDocs) {
-    aNode.append(UI.formatDocStream(aClass.docStream));
+    aNode.append(UI.format.docStream(aClass.docStream));
 
-    aNode.append(UI.formatBriefsWithHeading(
+    aNode.append(UI.format.briefsWithHeading(
                    _("Methods"),
                    DBUtils.filterDocsByType(aDocs, "method")));
-    aNode.append(UI.formatBriefsWithHeading(
+    aNode.append(UI.format.briefsWithHeading(
                    _("Fields"),
                    DBUtils.filterDocsByType(aDocs, "field")));
-    aNode.append(UI.formatBriefsWithHeading(
+    aNode.append(UI.format.briefsWithHeading(
                    _("Getters"),
                    DBUtils.filterDocsByType(aDocs, "getter")));
-    aNode.append(UI.formatBriefsWithHeading(
+    aNode.append(UI.format.briefsWithHeading(
                    _("Setters"),
                    DBUtils.filterDocsByType(aDocs, "setter")));
+  }
+};
+
+Widgets.body["method"] = {
+  show: function(aNode, aMethod) {
+    aNode.append(UI.format.docStream(aMethod.docStream));
+
+    aNode.append(UI.format.paramsWithHeading(aMethod));
   }
 };
 

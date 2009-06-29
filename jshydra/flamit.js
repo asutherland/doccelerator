@@ -78,9 +78,10 @@ var BlockParsers = {
 };
 
 var TagParsers = {
+  RE_OPTIONAL: /^\[optional\] /,
   _paramReturnCommon: function TagParser_paramReturnCommon(aText, aResObj,
                                                            aBlock, aNode) {
-    // next there may be an optional type
+    // next there may be an optional type in braces
     if (aText[0] == '{') {
       let idxRBrace = aText.indexOf('}');
       if (idxRBrace) {
@@ -89,8 +90,19 @@ var TagParsers = {
       }
     }
 
+    // there may be an "[optional]" decoration
+    if ((aResObj.optional = this.RE_OPTIONAL.test(aText)))
+      aText = aText.substring(11);
+
     aResObj.stream = parse_comment_text(aText);
   },
+  /**
+   * The @param tag.  Allowed syntaxes:
+   * - "@param parameterName comment""
+   * - "@param parameterName {type} comment..."
+   * - "@param parameterName [optional] comment..."
+   * - "@param parameterName {type} [optional] comment..."
+   */
   param: function TagParser_param(aBlock, aNode) {
     if (aNode.params === undefined)
       aNode.params = [];
