@@ -139,18 +139,26 @@ var UI = {
     for (var iWidget = 0; iWidget < eligible.length; iWidget++) {
       widget = eligible[iWidget];
 
+      if (iWidget)
+        aToolbarNode.append("&nbsp;");
       this._makeToolbarWidget(widget, aThing).appendTo(aToolbarNode);
     }
   },
   _makeToolbarWidget: function(aWidget, aThing) {
-    return $("<span></span>")
-      .addClass("ui-icon")
-      .addClass("ui-icon-" + aWidget.icon)
+    var widget = $("<span></span>")
       .click(function() {
                var jDocThing = $(this).closest(".docthing");
                aWidget.onClick(jDocThing,
                                jDocThing.data("what"));
              });
+    $("<span></span>")
+      .addClass("inline-icon")
+      .addClass("ui-icon-" + aWidget.icon)
+      .appendTo(widget);
+    $("<span></span>")
+      .text(aWidget.label)
+      .appendTo(widget);
+    return widget;
   },
 
   /**

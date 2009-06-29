@@ -76,10 +76,11 @@ Widgets.sidebar.files = {
         }
         else {
           $("<li></li>")
-            .text(subStray.label)
-            .addClass("file-name")
-            .data("what", subStray)
-            .click(UI.showClick)
+            .append($("<span></span>")
+              .text(subStray.label)
+              .addClass("file-name")
+              .data("what", subStray)
+              .click(UI.showClick))
             .appendTo(aNode);
         }
       }
@@ -147,7 +148,7 @@ Widgets.body["class"] = {
 
 Widgets.itemToolbar.close = {
   icon: "close",
-  tooltip: _("Close"),
+  label: _("Close"),
   // be last
   desiredPosition: 1000000,
   appliesTo: true,
@@ -158,6 +159,7 @@ Widgets.itemToolbar.close = {
 
 Widgets.itemToolbar.remember = {
   icon: "heart",
+  label: _("Remember"),
   tooltip: _("Remember for later"),
   desiredPosition: -1000000,
   appliesTo: true,

@@ -6,7 +6,7 @@
 body {
   background: #000000;
   font-family: Segoe UI, Arial, sans-serif;
-  color: #ffffff;
+  color: #babdb6;
 }
 
 #sidebar {
@@ -55,6 +55,13 @@ ul {
 
 .docthing-toolbar {
   float: right;
+  text-align: right;
+  font-size: 80%;
+  color: #656763;
+}
+
+.docthing-toolbar span:hover {
+  color: #fcaf3e;
 }
 
 .file-name {
