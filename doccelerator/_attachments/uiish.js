@@ -47,7 +47,7 @@ var UI = {
     if (aWhatClicked && aWhatClicked.length)
       insertionY = aWhatClicked.offset().top + aWhatClicked.height();
     else
-      insertionY = 0;
+      insertionY = 60;
 
     var docTop = $(window).scrollTop(), docBottom = docTop + $(window).height();
     // require some extra space so the thing can be somewhat visible
