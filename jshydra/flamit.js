@@ -38,6 +38,21 @@ var NodeUtils = {
   },
 };
 
+/**
+ * Helper function to process a documentation node.
+ *
+ * @param aOot Root result element.  We will place our constructed node in
+ *     aOot.docs.
+ * @param {String} aType the type of node.
+ * @param aInfo The jshydra object we are consuming.
+ * @param aName The name of the object as provided by context.  This is
+ *     generally what we would think of as the name, rather than the explicit
+ *     name potentially provided (or not) with a function, for example.  In
+ *     the case "var a = function b() {}", aName is "a".
+ * @param aParent The parent node produced by a previous call to make_node.
+ *
+ * @returns The node object built by this method.
+ */
 function make_node(aOot, aType, aInfo, aName, aParent) {
   let node = {
     file: aOot.filename,
@@ -46,7 +61,8 @@ function make_node(aOot, aType, aInfo, aName, aParent) {
     explicitName: aInfo.name ? aInfo.name : null,
     fullName: aParent ? aParent.fullName + "." + aName : aName,
     parentName: aParent ? aParent.fullName : null,
-    isPublic: aName[0] != "_",
+    visibility: (aName[0] != "_") ? "public" : "private",
+    visibilityDescription: null,
   };
 
   let comment;
@@ -57,6 +73,20 @@ function make_node(aOot, aType, aInfo, aName, aParent) {
     comment = comment ? (comment + aInfo.comment) : aInfo.comment;
   if (comment)
     parse_comment(comment, node);
+
+  // see if there is a group associated with us
+  if (aInfo.group && aInfo.group.comment) {
+    let group = aInfo.group;
+    if (!group.info) {
+      group.info = {};
+      parse_comment(group.comment, group.info);
+    }
+
+    // copy-down everything in the info structure...
+    for each (let [key, value] in Iterator(group.info)) {
+      node[key] = value;
+    }
+  }
 
   aOot.docs.push(node);
   return node;
@@ -128,23 +158,42 @@ var TagParsers = {
     let param = {};
     aNode.params.push(param);
 
-    let text = aBlock.text;
-
-    // the first thing should be the parameter name...
-    {
-    }
-
-    this._paramReturnCommon(text, param, aBlock, aNode, true);
+    this._paramReturnCommon(aBlock.text, param, aBlock, aNode, true);
   },
   returns: function TagParser_param(aBlock, aNode) {
     aNode.returns = {};
 
     this._paramReturnCommon(aBlock.text, aNode.returns, aBlock, aNode);
+  },
+  /* === Groupy Things === */
+  name: function TagParser_name(aBlock, aNode) {
+    aNode.groupName = aBlock.text;
+  },
+  "public": function TagParser_public(aBlock, aNode) {
+    aNode.visibility = "public";
+    if (aNode.text)
+      aNode.visibilityDescription = aBlock.text;
+  },
+  "protected": function TagParser_protected(aBlock, aNode) {
+    aNode.visibility = "protected";
+    if (aNode.text)
+      aNode.visibilityDescription = aBlock.text;
+  },
+  "private": function TagParser_protected(aBlock, aNode) {
+    aNode.visibility = "private";
+    if (aNode.text)
+      aNode.visibilityDescription = aBlock.text;
   }
 };
 TagParsers["return"] = TagParsers.returns;
 
 const REFERENCE_REGEX = /\|([^ |]+)\|/g;
+/**
+ * Parses a string for inline-markup, producing a textStream.
+ *
+ * @return An array of items where each thing is either a string (to be
+ *     displayed as text) or a reference object.
+ */
 function parse_comment_text(aText, aNode) {
   let match;
 
@@ -169,6 +218,10 @@ function parse_comment_text(aText, aNode) {
  *  see a paragraph boundary, tag, or bullet.  For each of these things, we use
  *  parse_comment_text to process it to detect references or other forms of
  *  inline markup, although it's really up to the parser.
+ *
+ * @param {String} aComment A block of all the comments between the code block
+ *     preceding us and the code block corresponding to aNode.
+ * @param aNode The output object.
  */
 function parse_comment(aComment, aNode) {
   let iStart = aComment.lastIndexOf("/**");

@@ -12,6 +12,16 @@ var thunderbirdRepo = {
     'mailnews/base/src/virtualFolderWrapper.js',
 
     'mailnews/base/util/jsTreeSelection.js',
+
+    // test framework
+    'mailnews/test/resources/asyncTestUtils.js',
+    'mailnews/test/resources/mailTestUtils.js',
+    'mailnews/test/resources/messageGenerator.js',
+    'mailnews/test/resources/messageModifier.js',
+    'mailnews/test/resources/searchTestUtils.js',
+    'mailnews/test/resources/viewWrapperTestUtils.js',
+
+    // test code
   ]
 };
 
