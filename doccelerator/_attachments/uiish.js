@@ -245,15 +245,19 @@ UI.format = {
   summary: function UI_format_summary(aThing) {
     if (aThing.summaryStream)
       return this.textStream(aThing.summaryStream, aThing);
-    if (!aThing.docStream)
-      return $("<span class='undocumented'></span>")
-        .text("Not documented");
+    var stream;
+    if (!aThing.docStream) {
+      if (!aThing.returns)
+        return $("<span class='undocumented'></span>")
+          .text("Not documented");
 
-    var stream = aThing.docStream[0].stream;
-    if (aThing.docStream[0].type == "tag") {
-      stream = aThing.docStream[0].text;
-      stream.unshift(aThing.docStream[0].tag + " ");
+      stream = aThing.returns.stream;
+      stream.unshift(_("Returns") + " ");
     }
+    else {
+      stream = aThing.docStream[0].stream;
+    }
+
     return $("<span></span>").append(this.textStream(stream, aThing, true));
   },
 
@@ -278,8 +282,14 @@ UI.format = {
           var nextChar = hunk[periodPoint + 1];
           if (nextChar == ")" || nextChar == '"')
             periodPoint++;
-          hunk = hunk.substring(0, periodPoint + 1);
-          foundTerminus = true;
+          // if there isn't whitespace after the period (and it wasn't a closing
+          //  character, then keep going.
+          else if (nextChar != " ")
+            periodPoint = null;
+          if (periodPoint) {
+            hunk = hunk.substring(0, periodPoint + 1);
+            foundTerminus = true;
+          }
         }
         nodes = nodes.add($("<span></span>").text(hunk));
         if (foundTerminus)

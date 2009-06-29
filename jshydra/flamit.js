@@ -186,6 +186,7 @@ var TagParsers = {
   }
 };
 TagParsers["return"] = TagParsers.returns;
+TagParsers.groupName = TagParsers.name;
 
 const REFERENCE_REGEX = /\|([^ |]+)\|/g;
 /**
