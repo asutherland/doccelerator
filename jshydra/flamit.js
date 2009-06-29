@@ -128,6 +128,7 @@ var TagParsers = {
     this._paramReturnCommon(aBlock.text, aNode.returns, aBlock, aNode);
   }
 };
+TagParsers["return"] = TagParsers.returns;
 
 const REFERENCE_REGEX = /\|([^ |]+)\|/g;
 function parse_comment_text(aText, aNode) {

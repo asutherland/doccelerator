@@ -52,9 +52,11 @@ var UI = {
     var docTop = $(window).scrollTop(), docBottom = docTop + $(window).height();
     // require some extra space so the thing can be somewhat visible
     var visible = (insertionY >= docTop + 60 && insertionY <= docBottom - 60);
+    // figure out if the thing is huge and the blind effect is danger-prone
+    var tooHuge = node.height() > $(window).height();
 
     // if the insertion point is visible hide it so we can show it
-    if (visible)
+    if (visible && !tooHuge)
       node.hide();
 
     // insert it however
@@ -64,12 +66,15 @@ var UI = {
       $("#body").prepend(node);
 
     // animate it however
-    if (visible)
-      node.show("blind");
+    if (visible) {
+      if (tooHuge)
+        node.effect("highlight");
+      else
+        node.show("blind");
+    }
     else {
-      $.scrollTo(node, 400, {onAfter: function() {
-                               node.effect("highlight", "slow");
-                             }});
+      $.scrollTo(node, 400);
+      node.effect("highlight", null, 500);
     }
   },
   showClick: function UI_showClick(aEvent) {
@@ -95,11 +100,25 @@ var UI = {
       .addClass("docthing-toolbar")
       .appendTo(node);
 
-    $("<h2></h2>")
-      .text(aThing.fullName)
-      .addClass(aThing.type + "-name")
-      .appendTo(node);
+    var extraName = aThing.fullName.substring(
+                      0, aThing.fullName.length - aThing.name.length);
 
+    if (extraName) {
+      $("<h2></h2>")
+        .append($("<span></span>")
+          .text(extraName)
+          .addClass("extraname"))
+        .append($("<span></span>")
+          .text(aThing.name)
+          .addClass(aThing.type + "-name"))
+        .appendTo(node);
+    }
+    else {
+      $("<h2></h2>")
+        .text(aThing.fullName)
+        .addClass(aThing.type + "-name")
+        .appendTo(node);
+    }
 
     this._makeToolbarWidgets(toolbar, aThing);
 
@@ -227,10 +246,16 @@ UI.format = {
     for (var iStream = 0; iStream < aTextStream.length; iStream++) {
       var hunk = aTextStream[iStream];
       if (typeof(hunk) == "string") {
-        if (aMakeSummary && hunk.indexOf(".") != -1)
-          hunk = hunk.substring(0, hunk.indexOf(".") + 1);
+        var foundTerminus = false, periodPoint;
+        if (aMakeSummary && ((periodPoint = hunk.indexOf(".")) != -1)) {
+          // let parens and quotes close out
+          var nextChar = hunk[periodPoint + 1];
+          if (nextChar == ")" || nextChar == '"')
+            periodPoint++;
+          hunk = hunk.substring(0, periodPoint + 1);
+        }
         nodes = nodes.add($("<span></span>").text(hunk));
-        if (aMakeSummary && hunk.lastIndexOf(".") != -1)
+        if (foundTerminus)
           return nodes;
       }
       else {
@@ -281,23 +306,41 @@ UI.format = {
    *  nodes suitable for appending to a parent node.
    */
   paramsWithHeading: function UI_format_paramsWithHeading(aThing) {
-    var nodes = $([]);
+    var nodes = $("<h3></h3>")
+      .text(_("Parameters"));
+    var tableNode = $("<table></table>");
+    nodes = nodes.add(tableNode);
 
-    if (!dlNode) {
-          dlNode = $("<dl></dl>");
-          nodes.push(dlNode);
-        }
-        $("<dt></dt>")
-          .text(block.tag)
-          .appendTo(dlNode);
-        // We will need to specialize on fancy tags in the future, although
-        //  they might not have a type of "tag" to help distinguish them.
-        $("<dd></dd>")
-          .append(this.textStream(block.stream))
-          .appendTo(dlNode);
+    for (var iParam = 0; iParam < aThing.params.length; iParam++) {
+      var param = aThing.params[iParam];
+      var tr = $("<tr></tr>")
+        .appendTo(tableNode);
+      $("<td></td>")
+        .text(param.name)
+        .addClass("param-name")
+        .appendTo(tr);
+      $("<td></td>")
+        .text(param.type || "")
+        .appendTo(tr);
+      $("<td></td>")
+        .append(this.textStream(param.stream))
+        .appendTo(tr);
+    }
 
     return nodes;
-  }
+  },
+
+  /**
+   * Given a thing, format its return value, returning a jQuery collection of
+   *  nodes suitable for appending to a parent node.
+   */
+  returnWithHeading: function UI_format_paramsWithHeading(aThing) {
+    var nodes = $("<h3></h3>")
+      .text(_("Returns"));
+    var streamNode = $("<div></div>")
+      .append(this.textStream(aThing.returns.stream));
+    return nodes.add(streamNode);
+  },
 };
 
 var UIUtils = {

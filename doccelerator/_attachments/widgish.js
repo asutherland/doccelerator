@@ -49,9 +49,10 @@ Widgets.sidebar.files = {
     var iRow;
     for (iRow = 0; iRow < aData.rows.length; iRow++) {
       var row = aData.rows[iRow];
+      var basename = row.key.substring(row.key.lastIndexOf('/') + 1);
       files.push({type: "file",
                   label: row.key,
-                  name: row.key,
+                  name: basename,
                   fullName: row.key});
     }
 
@@ -108,7 +109,7 @@ Widgets.body.default = {
  */
 Widgets.body.file = {
   prepareToShow: function(aFile, aCallback) {
-    fldb.getFileDocs("interesting", aFile.name, aCallback);
+    fldb.getFileDocs("interesting", aFile.fullName, aCallback);
   },
   show: function(aNode, aFile, aDocs) {
     aNode.append(UI.format.briefsWithHeading(
@@ -150,7 +151,10 @@ Widgets.body.method = {
   show: function(aNode, aMethod) {
     aNode.append(UI.format.docStream(aMethod.docStream));
 
-    //aNode.append(UI.format.paramsWithHeading(aMethod));
+    if (aMethod.params)
+      aNode.append(UI.format.paramsWithHeading(aMethod));
+    if (aMethod.returns)
+      aNode.append(UI.format.returnWithHeading(aMethod));
   }
 };
 
