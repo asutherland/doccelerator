@@ -219,6 +219,10 @@ Widgets.body["class"] = {
     fldb.getDocs("by_parent", aClass.fullName, aCallback);
   },
   show: function(aNode, aClass, aDocs) {
+    aNode.append(UI.format.typeListWithHeading(
+                   _("Inherits From"),
+                   aClass.subclasses));
+
     aNode.append(UI.format.docStream(aClass.docStream, aClass));
 
     var groups = UIUtils.categorizeClassParts(aDocs);

@@ -344,8 +344,27 @@ UI.format = {
     var thing = {
       type: "type",
       name: aTypeName,
+      fullName: aTypeName,
     };
     return this.link(thing);
+  },
+
+  typeListWithHeading: function UI_format_typeListWithHeading(aHeading,
+                                                              aTypeList) {
+    var nodes = $([]);
+    if (!aTypeList || !aTypeList.length)
+      return nodes;
+
+    nodes = nodes.add($("<span></span>")
+      .text(aHeading));
+    for (var i = 0; i < aTypeList.length; i++) {
+      if (i)
+        nodes = nodes.add($("<span></span>").text(", "));
+      else
+        nodes = nodes.add($("<span></span>").text(" "));
+      nodes = nodes.add(UI.format.typeFromName(aTypeList[i]));
+    };
+    return nodes;
   },
 
   /**
