@@ -5,6 +5,10 @@ import cgi, os, os.path, subprocess, sys, tempfile
 form = cgi.FieldStorage()
 
 print 'Content-Type: application/x-javascript' #application/json'
+print 'Access-Control-Allow-Origin: *'
+#print 'Access-Control-Allow-Credentials: true'
+print 'Pragma: no-cache'
+print 'Cache-control: no-cache, must-revalidate'
 print ''
 
 data = form['filedata'].value

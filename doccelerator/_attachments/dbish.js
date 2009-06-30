@@ -50,9 +50,13 @@ RepoProcessor.prototype = {
     var dis = this;
     var url = this.repo.url_base + this.current_file;
     Log.info("Retrieving source for", this.current_file, "from", url);
-    $.get(url, null, function (data) {
-            dis._gotSource(data);
-          }, "text");
+    $.ajax({type: "GET",
+            url: url,
+            dataType: "text",
+            success: function (data) {
+              dis._gotSource(data);
+            }
+          });
   },
   /**
    * We got the source code!
@@ -67,15 +71,18 @@ RepoProcessor.prototype = {
   _hydraSource: function() {
     Log.info("Pushing file source through flamboydoc service.");
     var dis = this;
-    $.post(HYDRA_FLAM_URL, {
-             filename: this.repo.repo_name + "/" + this.current_file,
-             filedata: this.file_data
-           },
-           function (data) {
-             dis._hydraSourced(data);
-           },
-           "json"
-          );
+    $.ajax({
+             type: "POST",
+             url: HYDRA_FLAM_URL,
+             dataType: "json",
+             data: {
+               filename: this.repo.repo_name + "/" + this.current_file,
+               filedata: this.file_data
+             },
+             success: function (data) {
+               dis._hydraSourced(data);
+             }
+           });
   },
   /**
    * We got the flamboydoc'ed results!

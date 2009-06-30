@@ -61,7 +61,6 @@ function make_node(aOot, aType, aInfo, aName, aParent) {
     explicitName: aInfo.name ? aInfo.name : null,
     fullName: aParent ? aParent.fullName + "." + aName : aName,
     parentName: aParent ? aParent.fullName : null,
-    visibility: (aName[0] != "_") ? "public" : "private",
     visibilityDescription: null,
   };
 
@@ -84,9 +83,16 @@ function make_node(aOot, aType, aInfo, aName, aParent) {
 
     // copy-down everything in the info structure...
     for each (let [key, value] in Iterator(group.info)) {
-      node[key] = value;
+      // but only if there isn't already something more explicit
+      if (!(key in node))
+        node[key] = value;
     }
   }
+
+  // take a guess at visibility if it was not explicitly set or copied down from
+  //  the group
+  if (!("visibility" in node))
+    node.visibility = (aName[0] != "_") ? "public" : "private";
 
   aOot.docs.push(node);
   return node;
