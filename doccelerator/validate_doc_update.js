@@ -14,6 +14,10 @@ function (newDoc, oldDoc, userCtx) {
     if (!beTrue) forbidden(message);
   };
 
+  // comments are un-authenticated
+  if (type == "comment")
+    return;
+
   // docs with authors can only be saved by their author
   if (author) {
     // dirty hack to provide userCtx.name to the client process

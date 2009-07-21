@@ -89,6 +89,7 @@ var UI = {
     // we want to generate this notification after the DOM Element has been
     //  added but before the effects start happening
     UI.history.onShow(aThing, node);
+    UI._decorateThing(aThing, node);
 
     if (animate) {
       // animate it however
@@ -156,30 +157,12 @@ var UI = {
   },
 
 
-  _compareWidgetsByPositionAndName:
-      function UI__compareWidgetsByPositionAndName(a, b) {
-    // use the icon as a proxy for name for now
-    if (a.desiredPosition == b.desiredPosition)
-      return a.icon.localeCompare(b.icon);
-    return a.desiredPosition - b.desiredPosition;
-  },
   /**
    * Construct the toolbar widgets for a given thing.
    */
   _makeToolbarWidgets: function UI__makeToolbarWidgets(aToolbarNode, aThing) {
     var widget;
-    var eligible = [];
-    for each (widget in Widgets.itemToolbar) {
-      if (widget.appliesTo === true ||
-          ((aThing.type in widget.appliesTo) &&
-           widget.appliesTo[aThing.type]) ||
-          (!(aThing.type in widget.appliesTo) &&
-           widget.appliesTo._default))
-        eligible.push(widget);
-    }
-
-    eligible.sort(this._compareWidgetsByPositionAndName);
-
+    var eligible = Widgets.findApplicable(Widgets.itemToolbar, aThing);
     for (var iWidget = 0; iWidget < eligible.length; iWidget++) {
       widget = eligible[iWidget];
 
@@ -205,6 +188,22 @@ var UI = {
     return widget;
   },
 
+  /**
+   * Give all decorators interested in a thing of this type a chance to figure
+   *  out if they want to decorate the thing.  The decision need not be
+   *  synchronous; specualtive requests can be issued.  Currently we make no
+   *  attempt to flow-control/batch these checks, but eventually we might want
+   *  to.
+   */
+  _decorateThing: function UI__decorateThing(aThing, aDocWidget) {
+    var widget;
+    var eligible = Widgets.findApplicable(Widgets.bodyDecorators, aThing);
+
+    for (var iWidget = 0; iWidget < eligible.length; iWidget++) {
+      widget = eligible[iWidget];
+      widget.decorate(aThing, aDocWidget);
+    }
+  },
 };
 
 UI.format = {

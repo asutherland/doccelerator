@@ -35,6 +35,11 @@
       <!-- Sentinel div to try and eliminate scrolling explosions. -->
       <div></div>
     </div>
+    <div id="namedialog" title="Enter a username!">
+      Please enter a user name to identify yourself.  (IRC handle is
+      good).<br />
+      <input id="dia-username"></input>
+    </div>
   </body>
   <script type="text/javascript" src="js/json2.js"></script>
   <script type="text/javascript" src="js/jquery-1.3.2.min.js"></script>
@@ -53,6 +58,7 @@
     var design;
     var DB;
     $(function() {
+      User.init();
       var nohash = document.location.href;
       if (nohash.indexOf("#") != -1)
         nohash = nohash.substring(0, nohash.indexOf("#"));

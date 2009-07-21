@@ -46,10 +46,7 @@ a {
 .docthing {
   background: #1e2426;
   color: #babdb6;
-  -moz-border-radius-bottomleft:3px;
-  -moz-border-radius-bottomright:3px;
-  -moz-border-radius-topleft:3px;
-  -moz-border-radius-topright:3px;
+  -moz-border-radius: 3px;
   padding: 0.5em;
   margin-bottom: 1em;
 }
@@ -143,11 +140,21 @@ td {
   color: #656763;
 }
 
+.comment-box {
+  border: 1px solid #ffffff;
+  -moz-border-radius: 3px;
+  padding: 4px;
+  margin: 4px;
+}
+
+.comment-edit-text {
+  width: 95%;
+  width: -moz-available;
+  height: 8em;
+}
+
 #sidebar .happybox h3 {
-  -moz-border-radius-bottomleft:6px;
-  -moz-border-radius-bottomright:6px;
-  -moz-border-radius-topleft:6px;
-  -moz-border-radius-topright:6px;
+  -moz-border-radius: 6px;
   -moz-background-clip:border;
   -moz-background-inline-policy:continuous;
   -moz-background-origin:padding;

@@ -5,13 +5,31 @@ var Widgets = {
   sidebar: {
   },
   /**
-   * Ways to handle things in the body?  Not used yet.
+   * Body widgets based on docthing types.
    */
   body: {
   },
+  /**
+   * Widgets that get added on to body widgets.  Comments are the only user
+   *  right now, but I could also envision performance data, unit test failures,
+   *  exposure that a pending patch touches things, etc. all using this
+   *  mechanism.
+   */
+  bodyDecorators: {
+  },
+  /**
+   * Things that go in the toolbar that shows up for each thing in the body.
+   */
+  itemToolbar: {
+  },
+
   _initialized: false,
   serializationAliases: {},
-  refreshAll: function() {
+  /**
+   * Refresh (and initialize) widgets.  This must be called at startup before
+   *  anything interesting happens.
+   */
+  refreshAll: function Widgets_refreshAll() {
     var key, widget;
     var initialized = this._initialized;
 
@@ -33,10 +51,42 @@ var Widgets = {
 
     this._initialized = true;
   },
+
+  _compareWidgetsByPositionAndName:
+      function Widgets__compareWidgetsByPositionAndName(a, b) {
+    // use the icon as a proxy for name for now
+    if (a.desiredPosition == b.desiredPosition)
+      return a.icon.localeCompare(b.icon);
+    return a.desiredPosition - b.desiredPosition;
+  },
+
   /**
-   * Things that go in the toolbar that shows up for each thing in the body.
+   * Find all the widgets applicable to the thing.  The decision is made
+   *  based on the appliesTo value/dictionary on the widget and the type of the
+   *  thing.
+   *
+   * @param aWidgets A widget dictionary such as |Widgets.itemToolbar| or
+   *     |Widgets.bodyDecorators|.
+   * @param aThing The thing to see if they are appropriate for.
+   *
+   * @return {Array} A list of appropriate widgets sorted based on their desired
+   *     position and name.
    */
-  itemToolbar: {
+  findApplicable: function Widgets_findApplicable(aWidgets, aThing) {
+    var eligible = [];
+    for (var widgetName in aWidgets) {
+      var widget = aWidgets[widgetName];
+      if (widget.appliesTo === true ||
+          ((aThing.type in widget.appliesTo) &&
+           widget.appliesTo[aThing.type]) ||
+          (!(aThing.type in widget.appliesTo) &&
+           widget.appliesTo._default))
+        eligible.push(widget);
+    }
+
+    eligible.sort(this._compareWidgetsByPositionAndName);
+
+    return eligible;
   }
 };
 
@@ -358,7 +408,72 @@ Widgets.itemToolbar.comment = {
   label: _("Comment"),
   desiredPosition: 20,
   appliesTo: true,
+  // when clicked, we want to add a new doc block.
   onClick: function(aDocWidget, aThing) {
+    User.ensureUsername(function(aUsername) {
+      Widgets.bodyDecorators.comment.newComment(aThing, aDocWidget, aUsername);
+    });
+  }
+};
 
+Widgets.bodyDecorators.comment = {
+  appliesTo: true,
+  _makeWidget: function(aDocWidget, aComment) {
+    var box = $("<div></div>")
+      .addClass("comment-box")
+      .data("what", aComment)
+      .appendTo(aDocWidget);
+    var userSays = $("<div></div>")
+      .text(aComment.author + " adds...")
+      .appendTo(box);
+    var timeoutActive = false;
+    var area;
+    // make it editable if the current user is the author
+    if (aComment.author == User.username) {
+      area = $("<textarea></textarea>")
+        .addClass("comment-edit-text")
+        .text(aComment.comment)
+        .keypress(function() {
+                    if (!timeoutActive) {
+                      timeoutActive = true;
+                      setTimeout(function() {
+                        timeoutActive = false;
+                        aComment.comment = area.val();
+                        Widgets.bodyDecorators.comment._saveComment(aComment);
+                      }, 5000);
+                    }
+                  });
+    }
+    else {
+      area = $("<pre></pre>")
+        .text(aComment.comment);
+    }
+    area.appendTo(box);
+    $.scrollTo(box, 400);
+  },
+  _saveComment: function Widgets_comment__saveComment(aComment) {
+    DB.saveDoc(aComment);
+  },
+  newComment: function Widgets_comment_newComment(aThing, aDocWidget,
+                                                  aUsername) {
+    var comment = {
+      type: "comment",
+      author: aUsername,
+      comment: "",
+      commentOn: aThing.fullName
+    };
+    this._makeWidget(aDocWidget, comment);
+  },
+  showComment: function Widgets_comment_showComment(aThing, aDocWidget,
+                                                    aComment) {
+    this._makeWidget(aDocWidget, aComment);
+  },
+  decorate: function Widgets_comment_decorate(aThing, aDocWidget) {
+    fldb.getDocs("comments_on_fullname", aThing.fullName, function(aDocs) {
+      for (var iDoc = 0; iDoc < aDocs.length; iDoc++) {
+        var comment = aDocs[iDoc];
+        Widgets.bodyDecorators.comment.showComment(aThing, aDocWidget, comment);
+      }
+    });
   }
 };
