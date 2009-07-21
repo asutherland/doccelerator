@@ -28,24 +28,29 @@ var UI = {
    * @param aWhatClicked the jquery-wrapped docthing where the click originated.
    *     If omitted, we add things to the top.  If provided, we add things after
    *     the docthing where the click originated.
+   * @param aOptions Additional show options...
+   * @param aOptions.noAnimate Do not animate!
    */
-  show: function UI_show(aThing, aWhatClicked) {
+  show: function UI_show(aThing, aWhatClicked, aOptions) {
     var widget = (aThing.type in Widgets.body ?
                     Widgets.body[aThing.type] : Widgets.body["default"]);
 
     if (widget.prepareToShow)
       widget.prepareToShow(
         aThing,
-        function(aExtra, aReplacementThing) {
+        function UI_show_prepared(aExtra, aReplacementThing) {
           if (aReplacementThing)
-            UI.show(aReplacementThing, aWhatClicked);
+            UI.show(aReplacementThing, aWhatClicked, aOptions);
           else
-            UI._realShow(widget, aThing, aWhatClicked, aExtra);
+            UI._realShow(widget, aThing, aWhatClicked, aExtra, aOptions);
         });
     else
-      this._realShow(widget, aThing, aWhatClicked);
+      this._realShow(widget, aThing, aWhatClicked, undefined, aOptions);
   },
-  _realShow: function UI__realShow(aWidget, aThing, aWhatClicked, aExtra) {
+  _realShow: function UI__realShow(aWidget, aThing, aWhatClicked, aExtra,
+                                   aOptions) {
+    if (aOptions == null)
+      aOptions = {};
     var node = this._makeThingNode(aThing);
 
     aWidget.show(node, aThing, aExtra);
@@ -69,8 +74,10 @@ var UI = {
     // figure out if the thing is huge and the blind effect is danger-prone
     var tooHuge = node.height() > $(window).height();
 
+    var animate = !("noAnimate" in aOptions) || !aOptions.noAnimate;
+
     // if the insertion point is visible hide it so we can show it
-    if (visible && !tooHuge)
+    if (animate && visible && !tooHuge)
       node.hide();
 
     // insert it however
@@ -83,16 +90,18 @@ var UI = {
     //  added but before the effects start happening
     UI.history.onShow(aThing, node);
 
-    // animate it however
-    if (visible) {
-      if (tooHuge)
-        node.effect("highlight");
-      else
-        node.show("drop");
-    }
-    else {
-      $.scrollTo(node, 400);
-      node.effect("highlight", null, 500);
+    if (animate) {
+      // animate it however
+      if (visible) {
+        if (tooHuge)
+          node.effect("highlight");
+        else
+          node.show("drop");
+      }
+      else {
+        $.scrollTo(node, 400);
+        node.effect("highlight", null, 500);
+      }
     }
   },
   showClick: function UI_showClick(aEvent) {
@@ -101,7 +110,8 @@ var UI = {
   },
 
   remove: function UI_remove(aDocWidget) {
-    aDocWidget.hide("drop", undefined, undefined, function() {
+    aDocWidget.hide("drop", undefined, undefined,
+                    function UI_remove_hidden() {
                       var thing = aDocWidget.data("what");
                       aDocWidget.remove();
                       UI.history.onRemove(thing, aDocWidget);
@@ -156,7 +166,7 @@ var UI = {
   /**
    * Construct the toolbar widgets for a given thing.
    */
-  _makeToolbarWidgets: function(aToolbarNode, aThing) {
+  _makeToolbarWidgets: function UI__makeToolbarWidgets(aToolbarNode, aThing) {
     var widget;
     var eligible = [];
     for each (widget in Widgets.itemToolbar) {
@@ -178,9 +188,9 @@ var UI = {
       this._makeToolbarWidget(widget, aThing).appendTo(aToolbarNode);
     }
   },
-  _makeToolbarWidget: function(aWidget, aThing) {
+  _makeToolbarWidget: function UI__makeToolbarWidget(aWidget, aThing) {
     var widget = $("<span></span>")
-      .click(function() {
+      .click(function UI__makeToolbarWidget_click() {
                var jDocThing = $(this).closest(".docthing");
                aWidget.onClick(jDocThing,
                                jDocThing.data("what"));
@@ -212,7 +222,7 @@ UI.format = {
     tr.append($("<td></td>").append(summary));
     return tr;
   },
-  _compareNames: function (a, b) {
+  _compareNames: function UI__compareNames(a, b) {
     return a.name.localeCompare(b.name);
   },
   briefsWithHeading:
@@ -225,7 +235,7 @@ UI.format = {
     var nodes = $("<h3></h3>")
       .text(aHeading)
       .addClass("collapsable")
-      .click(function() {
+      .click(function UI_briefsWithHeading_click() {
                $(this).toggleClass("collapsed").next().toggle();
              });
 
@@ -449,7 +459,9 @@ UI.format = {
  */
 UI.history = {
   init: function UI_history_init() {
-    $.history.init(function(hash) {UI.history.onHashChanged(hash);});
+    $.history.init(function UI_history_init_hashChanged(hash) {
+                     UI.history.onHashChanged(hash);
+                   });
   },
   /**
    * Map serialization parts to the live 'doc widget' for them.
@@ -497,9 +509,10 @@ UI.history = {
    *  body widgets without any concept of who is focused, but this might change.
    */
   _serializeState: function UI_history__serializeState() {
-    var things = $("#body").children().map(function() {
-                                             return $(this).data("what");
-                                           }).get();
+    var things = $("#body").children().map(
+                   function UI_history__serializeState_map() {
+                     return $(this).data("what");
+                   }).get();
     var state = this._serializeBodyState(things);
     return state;
   },
@@ -574,13 +587,24 @@ UI.history = {
     // start executing the plan...
     this._plan = plan;
     this._iPlan = 0;
-    this._executePlan();
+
+    this._queuePlanExecution();
   },
   _deserializeState: function UI_history__deserializeState(aSerialized) {
     this._deserializeBodyState(aSerialized);
   },
   _plan: null,
   _iPlan: null,
+  /**
+   * Queue plan execution with a timeout to ensure that the call-stack has a
+   *  chance to complete.
+   */
+  _queuePlanExecution: function UI_history__queuePlanExecution() {
+    var dis = this;
+    setTimeout(function UI_history_onShow_timeout() {
+                 dis._executePlan();
+               }, 0);
+  },
   _executePlan: function UI_history__executePlan() {
     for (; this._iPlan < this._plan.length; this._iPlan++) {
       var doit = this._plan[this._iPlan];
@@ -593,7 +617,7 @@ UI.history = {
           $("#body").prepend(doit.node);
       }
       else {
-        UI.show(doit.thing, lastNode);
+        UI.show(doit.thing, lastNode, {noAnimate: true});
         return;
       }
     }
@@ -613,7 +637,8 @@ UI.history = {
     //  doing things then we're screwed.)
     if (this._plan) {
       this._plan[this._iPlan++].node = aDocWidget;
-      this._executePlan();
+      // schedule the next step after our caller completes
+      this._queuePlanExecution(true);
       return;
     }
 
