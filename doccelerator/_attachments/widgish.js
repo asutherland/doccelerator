@@ -142,7 +142,7 @@ Widgets.body.file = {
   },
   deserialize: function(aFullName) {
     return {
-      name: aFullName.substring(aFullName.lastIndexOf(".")+1),
+      name: aFullName.substring(aFullName.lastIndexOf("/")+1),
       fullName: aFullName
     };
   }
