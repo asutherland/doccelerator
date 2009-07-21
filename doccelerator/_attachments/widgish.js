@@ -446,6 +446,7 @@ Widgets.bodyDecorators.comment = {
     }
     else {
       area = $("<pre></pre>")
+        .addClass("comment-display-text")
         .text(aComment.comment);
     }
     area.appendTo(box);
