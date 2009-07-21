@@ -283,7 +283,7 @@ Widgets.body.reference = {
     // otherwise, should a conflict resolution block...
     aNode.append(UI.format.briefsWithHeading(
                    _("Conflicting Types"),
-                   docs));
+                   docs, false, ["file"]));
   },
   alias: "n",
   serialize: function(aReference) {

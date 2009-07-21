@@ -214,10 +214,15 @@ UI.format = {
       .addClass(aThing.type + "-name")
       .click(UI.showClick);
   },
-  brief: function UI_format_brief(aThing) {
+  brief: function UI_format_brief(aThing, aExtraColumns) {
     var summary = this.summary(aThing);
     var tr = $("<tr></tr>");
     tr.append($("<td></td>").append(this.link(aThing)));
+    if (aExtraColumns) {
+      for (var iCol = 0; iCol < aExtraColumns.length; iCol++) {
+        tr.append($("<td></td>").text(aThing[aExtraColumns[iCol]]));
+      }
+    }
     tr.append($("<td></td>").append(summary));
     return tr;
   },
@@ -225,7 +230,8 @@ UI.format = {
     return a.name.localeCompare(b.name);
   },
   briefsWithHeading:
-      function UI_format_briefsWithHeading(aHeading, aThings, aCollapsed) {
+      function UI_format_briefsWithHeading(aHeading, aThings, aCollapsed,
+                                           aExtraColumns) {
     if (!aThings.length)
       return $([]);
 
@@ -241,7 +247,7 @@ UI.format = {
     var tableNode = $("<table></table>");
     nodes = nodes.add(tableNode);
     for (var iThing = 0; iThing < aThings.length; iThing++) {
-      tableNode.append(this.brief(aThings[iThing]));
+      tableNode.append(this.brief(aThings[iThing], aExtraColumns));
     }
 
     return nodes;
