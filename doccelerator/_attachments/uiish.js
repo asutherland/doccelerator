@@ -25,12 +25,13 @@ var UI = {
    *  relative to the source of the click.
    *
    * @param aThing The documentation 'thing', a document from the couch.
-   * @param aWhatClick the jquery-wrapped docthing where the click originated.
+   * @param aWhatClicked the jquery-wrapped docthing where the click originated.
+   *     If omitted, we add things to the top.  If provided, we add things after
+   *     the docthing where the click originated.
    */
   show: function UI_show(aThing, aWhatClicked) {
-    var widget = Widgets.body[aThing.type];
-    if (widget === undefined)
-      widget = Widgets.body.default;
+    var widget = (aThing.type in Widgets.body ?
+                    Widgets.body[aThing.type] : Widgets.body["default"]);
 
     if (widget.prepareToShow)
       widget.prepareToShow(
@@ -78,6 +79,10 @@ var UI = {
     else
       $("#body").prepend(node);
 
+    // we want to generate this notification after the DOM Element has been
+    //  added but before the effects start happening
+    UI.history.onShow(aThing, node);
+
     // animate it however
     if (visible) {
       if (tooHuge)
@@ -95,10 +100,12 @@ var UI = {
             $(aEvent.target).closest(".docthing"));
   },
 
-  remove: function UI_remove(aDocThing) {
-    aDocThing.hide("drop", undefined, undefined, function() {
-                     aDocThing.remove();
-                   });
+  remove: function UI_remove(aDocWidget) {
+    aDocWidget.hide("drop", undefined, undefined, function() {
+                      var thing = aDocWidget.data("what");
+                      aDocWidget.remove();
+                      UI.history.onRemove(thing, aDocWidget);
+                    });
   },
 
   /**
@@ -424,6 +431,227 @@ UI.format = {
       .append(this.textStream(aThing.returns.stream, aThing));
     return nodes.add(streamNode);
   },
+};
+
+/**
+ * History is concerned with encoding what is currently displayed to the
+ *  location hash and then being able to decode that.  This is to facilitate
+ *  both forward/backward usage and bookmarking.  We have an emphasis on
+ *  making reasonably readable hashes, but are constrainted by the large
+ *  underlying search base (a potentially huge codebase with long names).
+ *
+ * This functionality is intended to be additive and generally self-contained.
+ *  If you were to hollow us out leaving init/onShow/onRemove functions as
+ *  no-ops, then we should no longer do anything history related.
+ *
+ * In order to avoid horrible inefficiencies, we maintain a cache mapping
+ *  serialization parts to the live UI widgets.
+ */
+UI.history = {
+  init: function UI_history_init() {
+    $.history.init(function(hash) {UI.history.onHashChanged(hash);});
+  },
+  /**
+   * Map serialization parts to the live 'doc widget' for them.
+   */
+  _liveSerializationCache: {},
+  /**
+   * Serialize a thing into a form that |_deserializeBodyThing| can restore for
+   *  us later.  In most cases we expect the widgets to define a serializeAs
+   *  attribute that references a widget implementation that will perform an
+   *  appropriate CouchDB lookup when it comes time to deserialize.
+   */
+  _serializeBodyThing: function UI_history__serializeBodyThing(aThing) {
+    var widget = (aThing.type in Widgets.body ?
+                    Widgets.body[aThing.type] : Widgets.body["default"]);
+    var widgetName = aThing.type;
+    if (widget.serializeAs) {
+      widgetName = widget.serializeAs;
+      widget = Widgets.body[widget.serializeAs];
+    }
+
+    var key = ("alias" in widget ? widget.alias : widgetName);
+    var value = widget.serialize(aThing);
+    return key + "=" + value; // encodeURIComponent(value);
+  },
+  /**
+   * Serialize body widget state.
+   *
+   * @param {Array} aThings A list of documentation 'things' in display order.
+   *
+   * @return A string encoding the above state.
+   */
+  _serializeBodyState: function UI_history__serializeBodyState(aThings) {
+    // a list of strings of things like "n=Foo" or "t=Bar" or such.
+    var parts = [];
+
+    for (var iThing = 0; iThing < aThings.length; iThing++) {
+      var thing = aThings[iThing];
+      parts.push(this._serializeBodyThing(thing));
+    }
+
+    return parts.join("&");
+  },
+  /**
+   * Serialize UI state that should be hash-persistable.  Right now that is only
+   *  body widgets without any concept of who is focused, but this might change.
+   */
+  _serializeState: function UI_history__serializeState() {
+    var things = $("#body").children().map(function() {
+                                             return $(this).data("what");
+                                           }).get();
+    var state = this._serializeBodyState(things);
+    return state;
+  },
+  /**
+   * Deserialize the given part string to a pseudo-Thing object.  It obviously
+   *  is not a full CouchDB document; it's just enough that the deserialize
+   *  method can guarantee that the same widget's showing capability will know
+   *  how to actually restore things (by retrieving CouchDB documents, generally
+   *  speaking.)  This can be thought of as the opposite of
+   *  |_serializeBodyThing|.
+   */
+  _deserializeBodyThing: function UI_history__deserializeBodyThing(aPart) {
+    var bits = aPart.split("=");
+    var key = bits[0];
+    var value = bits[1]; // decodeURIComponent(bits[1]);
+
+    // Expand "t" to "type", etc. using the "alias" values on the body widget
+    //  definitions.  This assumes that Widgets.refreshAll() has been called at
+    //  least once prior to us being called, which we require to be true.
+    if (key in Widgets.serializationAliases)
+      key = Widgets.serializationAliases[key];
+    var widget = (key in Widgets.body ?
+                    Widgets.body[key] : Widgets.body["default"]);
+
+    var thing = widget.deserialize(value);
+    thing.type = key;
+    return thing;
+  },
+  /**
+   * @param {String} aSerialized A serialized string as returned by
+   *     |serializeState|.
+   */
+  _deserializeBodyState:
+      function UI_history__deserializeBodyState(aSerialized) {
+    var plan = [];
+    var parts = aSerialized.split("&");
+    // build a new live cache that only has live things
+    var newLiveCache = {};
+
+    // Process each part and figure out whether the thing is already displayed
+    //  and we can just move it, or whether we need to load it.
+    for (var iPart = 0; iPart < parts.length; iPart++) {
+      var part = parts[iPart];
+      // ignore empty strings
+      if (!part)
+        continue;
+      var cached = (part in this._liveSerializationCache ?
+                     this._liveSerializationCache[part] : null);
+      if (cached) {
+        plan.push({
+          action: "move",
+          node: cached
+        });
+        newLiveCache[part] = cached;
+      }
+      else {
+        plan.push({
+          action: "show",
+          thing: this._deserializeBodyThing(part)
+        });
+      }
+    }
+
+    // Kill things in the cache that we don't want anymore.
+    for (var key in this._liveSerializationCache) {
+      if (!(key in newLiveCache))
+        this._liveSerializationCache[key].remove();
+    }
+    // make newLiveCache the official live cache
+    this._liveSerializationCache = newLiveCache;
+
+    // start executing the plan...
+    this._plan = plan;
+    this._iPlan = 0;
+    this._executePlan();
+  },
+  _deserializeState: function UI_history__deserializeState(aSerialized) {
+    this._deserializeBodyState(aSerialized);
+  },
+  _plan: null,
+  _iPlan: null,
+  _executePlan: function UI_history__executePlan() {
+    for (; this._iPlan < this._plan.length; this._iPlan++) {
+      var doit = this._plan[this._iPlan];
+      var lastNode = (this._iPlan > 0 ? this._plan[this._iPlan - 1].node
+                                      : null);
+      if (doit.action == "move") {
+        if (lastNode)
+          lastNode.after(doit.node);
+        else
+          $("#body").prepend(doit.node);
+      }
+      else {
+        UI.show(doit.thing, lastNode);
+        return;
+      }
+    }
+
+    // we must be victors if we are here...
+    this._plan = null;
+    this._iPlan = null;
+  },
+  /**
+   * Called by UI when it is showing something new.  We are to update our cache
+   *  and update the hash as a result.
+   */
+  onShow: function UI_history_onShow(aThing, aDocWidget) {
+    // If we are currently executing a plan, then this notification is
+    //  completion notification for the step of the plan.  At least as long as
+    //  we stopped the user from triggering shows on their own.  (If the user is
+    //  doing things then we're screwed.)
+    if (this._plan) {
+      this._plan[this._iPlan++].node = aDocWidget;
+      this._executePlan();
+      return;
+    }
+
+    var part = this._serializeBodyThing(aThing);
+    this._liveSerializationCache[part] = aDocWidget;
+
+    // Update the hash state but make sure we know to avoid the event
+    this._expectingSyntheticChange = 1;
+    $.history.load(this._serializeState());
+  },
+  /**
+   * Called by UI when it is removing something currently displayed.
+   */
+  onRemove: function UI_history_onRemove(aThing, aDocWidget) {
+    // nuke it from the cache
+    var part = this._serializeBodyThing(aThing);
+    delete this._liveSerializationCache[part];
+
+    // Update the hash state but make sure we know to avoid the event
+    this._expectingSyntheticChange = 1;
+    $.history.load(this._serializeState());
+  },
+  /**
+   * Because our history implementation follows reality rather than defining it,
+   *  we need to ignore the synthetic hash change notification that is a result
+   *  of updating the location.  This flag enables us to do that.
+   */
+  _expectingSyntheticChange: false,
+  /**
+   * Called by the jQuery history plugin when the state has changed.
+   */
+  onHashChanged: function UI_history_onHashChanged(aHash) {
+    if (this._expectingSyntheticChange) {
+      this._expectingSyntheticChange--;
+      return;
+    }
+    this._deserializeState(aHash);
+  }
 };
 
 var UIUtils = {

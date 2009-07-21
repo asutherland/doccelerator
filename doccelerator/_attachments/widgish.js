@@ -10,9 +10,11 @@ var Widgets = {
   body: {
   },
   _initialized: false,
+  serializationAliases: {},
   refreshAll: function() {
     var key, widget;
     var initialized = this._initialized;
+
     for (key in Widgets.sidebar) {
       widget = Widgets.sidebar[key];
       if (!initialized && "init" in widget)
@@ -20,6 +22,15 @@ var Widgets = {
       if ("refresh" in widget)
         widget.refresh();
     }
+
+    for (key in Widgets.body) {
+      widget = Widgets.body[key];
+      if (!initialized && "init" in widget)
+        widget.init();
+      if (widget.alias)
+        this.serializationAliases[widget.alias] = key;
+    }
+
     this._initialized = true;
   },
   /**
@@ -101,7 +112,8 @@ Widgets.sidebar.remember = {
 Widgets.body["default"] = {
   show: function(aNode, aThing) {
     aNode.append(UI.format.docStream(aThing.docStream, aThing));
-  }
+  },
+  serializeAs: "reference"
 };
 
 /**
@@ -122,8 +134,20 @@ Widgets.body.file = {
     aNode.append(UI.format.briefsWithHeading(
                    _("Functions"),
                    DBUtils.filterDocsByType(aDocs, "function")));
+  },
+  // files are synthetic constructs currently, so we can just invent the node
+  alias: "f",
+  serialize: function(aFile) {
+    return aFile.fullName;
+  },
+  deserialize: function(aFullName) {
+    return {
+      name: aFullName.substring(aFullName.lastIndexOf(".")+1),
+      fullName: aFullName
+    };
   }
 };
+
 
 /**
  * Bounces types to the proper widget display after retrieving the type info.
@@ -156,6 +180,16 @@ Widgets.body.type = {
     aNode.append(UI.format.briefsWithHeading(
                    _("Conflicting Types"),
                    aDocs));
+  },
+  alias: "t",
+  serialize: function(aType) {
+    return aType.name;
+  },
+  deserialize: function(aTypeName) {
+    return {
+      name: aTypeName.substring(aTypeName.lastIndexOf(".")+1),
+      fullName: aTypeName
+    };
   }
 };
 
@@ -200,6 +234,16 @@ Widgets.body.reference = {
     aNode.append(UI.format.briefsWithHeading(
                    _("Conflicting Types"),
                    docs));
+  },
+  alias: "n",
+  serialize: function(aReference) {
+    return aReference.fullName;
+  },
+  deserialize: function(aRefName) {
+    return {
+      name: aRefName.substring(aRefName.lastIndexOf(".")+1),
+      fullName: aRefName
+    };
   }
 };
 
@@ -211,6 +255,18 @@ Widgets.body.references = {
     aNode.append(UI.format.briefsWithHeading(
                    _("Referenced By"),
                    aDocs));
+  },
+  serialize: function(aReferences) {
+    return aReferences.thing.fullName;
+  },
+  deserialize: function(aReferenced) {
+    return {
+      name: aReferenced,
+      fullName: _("references:") + aReferenced,
+      thing: {
+        fullName: aReferenced
+      }
+    };
   }
 };
 
@@ -227,7 +283,8 @@ Widgets.body["class"] = {
 
     var groups = UIUtils.categorizeClassParts(aDocs);
     aNode.append(UI.format.categorizedBriefs(groups));
-  }
+  },
+  serializeAs: "type"
 };
 
 Widgets.body.method = {
@@ -238,7 +295,8 @@ Widgets.body.method = {
       aNode.append(UI.format.paramsWithHeading(aMethod));
     if (aMethod.returns)
       aNode.append(UI.format.returnWithHeading(aMethod));
-  }
+  },
+  serializeAs: "reference"
 };
 
 Widgets.itemToolbar.close = {

@@ -42,6 +42,7 @@
   <script type="text/javascript" src="js/jquery.scrollTo-min.js"></script>
   <script type="text/javascript" src="js/jquery.couch.js"></script>
   <script type="text/javascript" src="js/jquery.cookies.js"></script>
+  <script type="text/javascript" src="js/jquery.history.js"></script>
   <script type="text/javascript" src="userish.js"></script>
   <script type="text/javascript" src="uiish.js"></script>
   <script type="text/javascript" src="dbish.js"></script>
@@ -52,13 +53,17 @@
     var design;
     var DB;
     $(function() {
-      var parts = document.location.href.split('/');
+      var nohash = document.location.href;
+      if (nohash.indexOf("#") != -1)
+        nohash = nohash.substring(0, nohash.indexOf("#"));
+      var parts = nohash.split('/');
       urlbase = '/' + parts.slice(3, -4).join('/') + '/';
       dbname = parts.slice(-4, -3)[0];
       design = parts.slice(-2, -1)[0];
       DB = $.couch.db(dbname);
       DB.uri = urlbase + dbname + '/';
       Widgets.refreshAll();
+      UI.history.init();
     });
   </script>
 </html>
