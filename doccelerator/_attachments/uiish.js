@@ -82,9 +82,9 @@ var UI = {
 
     // insert it however
     if (aWhatClicked && aWhatClicked.length)
-      aWhatClicked.after(node);
+      node.insertAfter(aWhatClicked);
     else
-      $("#body").prepend(node);
+      node.prependTo("#body");
 
     // we want to generate this notification after the DOM Element has been
     //  added but before the effects start happening
@@ -576,7 +576,7 @@ UI.history = {
       }
     }
 
-    // Kill things in the cache that we don't want anymore.
+    // remove things we don't need
     for (var key in this._liveSerializationCache) {
       if (!(key in newLiveCache))
         this._liveSerializationCache[key].remove();
@@ -612,9 +612,9 @@ UI.history = {
                                       : null);
       if (doit.action == "move") {
         if (lastNode)
-          lastNode.after(doit.node);
+          doit.node.insertAfter(lastNode);
         else
-          $("#body").prepend(doit.node);
+          doit.node.prependTo("#body");
       }
       else {
         UI.show(doit.thing, lastNode, {noAnimate: true});
@@ -631,6 +631,9 @@ UI.history = {
    *  and update the hash as a result.
    */
   onShow: function UI_history_onShow(aThing, aDocWidget) {
+    var part = this._serializeBodyThing(aThing);
+    this._liveSerializationCache[part] = aDocWidget;
+
     // If we are currently executing a plan, then this notification is
     //  completion notification for the step of the plan.  At least as long as
     //  we stopped the user from triggering shows on their own.  (If the user is
@@ -641,9 +644,6 @@ UI.history = {
       this._queuePlanExecution(true);
       return;
     }
-
-    var part = this._serializeBodyThing(aThing);
-    this._liveSerializationCache[part] = aDocWidget;
 
     // Update the hash state but make sure we know to avoid the event
     this._expectingSyntheticChange = 1;
