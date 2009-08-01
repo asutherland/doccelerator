@@ -1,29 +1,54 @@
-var thunderbirdRepo = {
-  url_base: '/xhr/hg/mozilla/comm-central/raw-file/tip/',
-         // 'http://hg.mozilla.org/comm-central/raw-file/tip/',
-  repo_name: 'comm-central',
-  files: [
-    'mail/base/content/folderDisplay.js',
-    'mail/base/content/messageDisplay.js',
+/**
+ * Process a repository definition.
+ *
+ * Builds the following attribute structures:
+ * - files: A list of repo-relative file names.
+ * - path_maps: Contains dictionaries for each attributes of the form FOO_path
+ *    found on directory definitions in the 'dirs' list.  Each key in the
+ *    dictionary is a path built by appending the file names of the 'files'
+ *    listed in the directory definition to the value found in FOO_path.  Each
+ *    value is the repo-relative file path.
+ */
+function explodeRepo(aRepoDef) {
+  aRepoDef.files = [];
+  aRepoDef.path_maps = {};
+  aRepoDef.file_to_subsystem = {};
 
-    'mailnews/base/src/dbViewWrapper.js',
-    'mailnews/base/src/quickSearchManager.js',
-    'mailnews/base/src/searchSpec.js',
-    'mailnews/base/src/virtualFolderWrapper.js',
+  var rePath = /^(.+)_path$/;
 
-    'mailnews/base/util/jsTreeSelection.js',
+  for (var iDir = 0; iDir < aRepoDef.dirs.length; iDir++) {
+    var dir = aRepoDef.dirs[iDir];
+    var subsystem = ("subsystem" in dir) ? dir.subsystem : null;
 
-    // test framework
-    'mailnews/test/resources/asyncTestUtils.js',
-    'mailnews/test/resources/mailTestUtils.js',
-    'mailnews/test/resources/messageGenerator.js',
-    'mailnews/test/resources/messageModifier.js',
-    'mailnews/test/resources/searchTestUtils.js',
-    'mailnews/test/resources/viewWrapperTestUtils.js',
+    // assume at most one magic path_map contribution per dir
+    var mapped_path_name = null;
+    var mapped_path_value = null;
+    var mapped_path_dict = null;
+    for (var key in dir) {
+      if (rePath.test(key)) {
+        mapped_path_name = rePath.exec(key)[1];
+        mapped_path_value = dir[key];
+        if (mapped_path_name in aRepoDef.path_maps)
+          mapped_path_dict = aRepoDef.path_maps[mapped_path_name];
+        else
+          mapped_path_dict = aRepoDef.path_maps[mapped_path_name] = {};
+        break;
+      }
+    }
 
-    // test code
-  ]
-};
+    for (var iFile = 0; iFile < dir.files.length; iFile++) {
+      var filename = dir.files[iFile];
+      var repo_path = dir.path + filename;
+      aRepoDef.files.push(repo_path);
+      if (mapped_path_dict)
+        mapped_path_dict[mapped_path_value + filename] = repo_path;
+      if (subsystem)
+        aRepoDef.file_to_subsystem[repo_path] = subsystem;
+    }
+  }
+
+  return aRepoDef;
+}
 
 var HYDRA_FLAM_URL = "/cgi-bin/flamcgi.py";
 
