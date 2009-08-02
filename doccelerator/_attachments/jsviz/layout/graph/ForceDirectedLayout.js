@@ -1,35 +1,38 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *     
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
+ *
  * Author: Kyle Scholz      http://kylescholz.com/
  * Copyright: 2006-2007
  */
 
 /**
  * ForceDirectedLayout
- *  
+ *
  * @author Kyle Scholz
- * 
+ *
  * @version 0.3.3
- * 
+ *
  * @param {DOMElement} container
  */
 var ForceDirectedLayout = function( container, useVectorGraphics ) {
-	
+
 	this.container = container;
 	this.containerLeft=0; this.containerTop=0;
 	this.containerWidth=0; this.containerHeight=0;
 
-	this.svg = useVectorGraphics && document.implementation.hasFeature("org.w3c.dom.svg", '1.1') ? true : false; 
+	this.svg = useVectorGraphics &&
+          document.implementation.hasFeature(
+              "http://www.w3.org/TR/SVG11/feature#BasicStructure", "1.1") ?
+            true : false;
 
 	// Render model with SVG if it's supported.
 	if ( this.svg ) {
@@ -39,13 +42,13 @@ var ForceDirectedLayout = function( container, useVectorGraphics ) {
 		this.view = new HTMLGraphView( container, 1 );
 	}
 
-	// Create the model that we'll use to represent the nodes and relationships 
+	// Create the model that we'll use to represent the nodes and relationships
 	// in our graph.
 	this.model = new ParticleModel( this.view );
 	this.model.start();
 
 	this.setSize();
-	
+
 	// for queueing loaders
 	this.dataNodeQueue = new Array();
 	this.relationshipQueue = new Array();
@@ -53,11 +56,11 @@ var ForceDirectedLayout = function( container, useVectorGraphics ) {
 	// the data graph defines the nodes and edges
 	this.dataGraph = new DataGraph();
 	this.dataGraph.subscribe( this );
-				
+
 	// if this is IE, turn on caching of javascript-loaded images explicitly
 	if ( document.all ) {
-		document.createStyleSheet().addRule('html', 
-			'filter:expression(document.execCommand("BackgroundImageCache", false, true))' );		
+		document.createStyleSheet().addRule('html',
+			'filter:expression(document.execCommand("BackgroundImageCache", false, true))' );
 	}
 
 	// attach an onresize event
@@ -91,7 +94,7 @@ var ForceDirectedLayout = function( container, useVectorGraphics ) {
  */
 ForceDirectedLayout.prototype.setSize = function() {
 	if ( this.container.tagName == "BODY" ) {
-		// Get the size of our window. 
+		// Get the size of our window.
 		if (document.all) {
 			this.containerWidth = document.body.offsetWidth - 5;
 	      	this.containerHeight = document.documentElement.offsetHeight - 5;
@@ -111,14 +114,14 @@ ForceDirectedLayout.prototype.setSize = function() {
 	this.view.setSize( this.containerLeft, this.containerTop,
 		this.containerWidth, this.containerHeight );
 	this.model.setSize( this.containerWidth, this.containerHeight );
-	
+
 	this.model.draw( true );
 }
 
 /*
  * A default mousemove handler. Moves the selected node and updates child
  * positions according to geometric model.
- * 
+ *
  * @param {Object} e
  */
 ForceDirectedLayout.prototype.handleMouseMoveEvent = function( e ) {
@@ -126,7 +129,7 @@ ForceDirectedLayout.prototype.handleMouseMoveEvent = function( e ) {
 
 		// TODO: This is a very temporary fix. In Firefox 2, our EventHandler
 		// factory piles mouse events onto the arguments list.
-		e = arguments[arguments.length-1];			
+		e = arguments[arguments.length-1];
 		var mouseX = e.pageX ? e.pageX : e.clientX;
 		var mouseY = e.pageY ? e.pageY : e.clientY;
 
@@ -143,7 +146,7 @@ ForceDirectedLayout.prototype.handleMouseMoveEvent = function( e ) {
 /*
  * A default mouseup handler. Resets the selected node's position
  * and clears the selection.
- */	
+ */
 ForceDirectedLayout.prototype.handleMouseUpEvent = function() {
 	if ( this.model.selected ) {
 		this.model.particles[this.model.selected].selected = false;
@@ -154,7 +157,7 @@ ForceDirectedLayout.prototype.handleMouseUpEvent = function() {
 
 /*
  * A default mousedown handler. Sets the selected node.
- * 
+ *
  * @param {Number} id
  */
 ForceDirectedLayout.prototype.handleMouseDownEvent = function( id ) {
@@ -165,11 +168,11 @@ ForceDirectedLayout.prototype.handleMouseDownEvent = function( id ) {
 
 /*
  * Handle a new node.
- *  
+ *
  * @param {DataGraphNode} dataNode
  */
 ForceDirectedLayout.prototype.newDataGraphNode = function( dataNode ) {
-	this.enqueueNode( dataNode );						
+	this.enqueueNode( dataNode );
 }
 
 ForceDirectedLayout.prototype.newDataGraphEdge = function( nodeA, nodeB ) {
@@ -178,7 +181,7 @@ ForceDirectedLayout.prototype.newDataGraphEdge = function( nodeA, nodeB ) {
 
 /*
  * Enqueue a node for modeling later.
- * 
+ *
  * @param {DataGraphNode} dataNode
  */
 ForceDirectedLayout.prototype.enqueueNode = function( dataNode ) {
@@ -187,21 +190,21 @@ ForceDirectedLayout.prototype.enqueueNode = function( dataNode ) {
 
 /*
  * Dequeue a node and create a particle representation in the model.
- * 
+ *
  * @param {DataGraphNode} dataNode
  */
 ForceDirectedLayout.prototype.dequeueNode = function() {
 	var node = this.dataNodeQueue.shift();
 	if ( node ) {
 		this.addParticle( node );
-		return true;						
+		return true;
 	}
 	return false;
 }
 
 /*
  * Enqueue a relationship for modeling later.
- * 
+ *
  * @param {DataGraphNode} nodeA
  * @param {DataGraphNode} nodeB
  */
@@ -216,7 +219,7 @@ ForceDirectedLayout.prototype.dequeueNode = function() {
 	var node = this.dataNodeQueue.shift();
 	if ( node ) {
 		this.addParticle( node );
-		return true;					
+		return true;
 	}
 	return false;
 }
@@ -228,8 +231,8 @@ ForceDirectedLayout.prototype.dequeueRelationship = function() {
 	var edge = this.relationshipQueue[0]
 	if ( edge && edge.nodeA.particle && edge.nodeB.particle ) {
 		this.relationshipQueue.shift();
-		this.addSimilarity( edge.nodeA, edge.nodeB );						
-	}	
+		this.addSimilarity( edge.nodeA, edge.nodeB );
+	}
 }
 
 /*
@@ -256,7 +259,7 @@ ForceDirectedLayout.prototype.recenter = function( modelNode ) {
 
 /*
  * Create a default configuration object with a reference to our layout.
- * 
+ *
  * @param {Particle} layout
  */
 ForceDirectedLayout.prototype.config = function( layout ) {
@@ -306,13 +309,13 @@ ForceDirectedLayout.prototype.forces={
 
 /*
  * Add a particle to the model and view.
- * 
+ *
  * @param {DataGraphNode} node
  */
 ForceDirectedLayout.prototype.addParticle = function( dataNode ) {
 	// Create a particle to represent this data node in our model.
 	var particle = this.makeNodeModel(dataNode);
-	
+
 	var domElement = this.makeNodeView( dataNode, particle );
 	this.view.addNode( particle, domElement );
 
@@ -330,10 +333,10 @@ ForceDirectedLayout.prototype.addParticle = function( dataNode ) {
 		particle.positionX = dataNode.parent.particle.positionX + rx;
 		particle.positionY = dataNode.parent.particle.positionY + ry;
 		var configNode = (dataNode.type in this.forces.spring &&
-			dataNode.parent.type in this.forces.spring[dataNode.type]) ? 
-			this.forces.spring[dataNode.type][dataNode.parent.type](dataNode, dataNode.parent, true) : 
+			dataNode.parent.type in this.forces.spring[dataNode.type]) ?
+			this.forces.spring[dataNode.type][dataNode.parent.type](dataNode, dataNode.parent, true) :
 			this.forces.spring['_default'](dataNode, dataNode.parent, true);
-		this.model.makeSpring( particle, dataNode.parent.particle, 
+		this.model.makeSpring( particle, dataNode.parent.particle,
 			configNode.springConstant, configNode.dampingConstant, configNode.restLength );
 
 		var props = this.viewEdgeBuilder( dataNode.parent, dataNode );
@@ -356,15 +359,15 @@ ForceDirectedLayout.prototype.addParticle = function( dataNode ) {
 
 /*
  * Add a spring force between two edges + corresponding edge in the view.
- * 
+ *
  * @param {Number} springConstant
  * @param {DataGraphNode} nodeA
  * @param {DataGraphNode} nodeB
  */
 ForceDirectedLayout.prototype.addSimilarity = function( nodeA, nodeB ) {
 	var configNode = (nodeA.type in this.forces.spring &&
-		nodeB.type in this.forces.spring[nodeA.type]) ? 
-		this.forces.spring[nodeA.type][nodeB.parent.type](nodeA,nodeB,false) : 
+		nodeB.type in this.forces.spring[nodeA.type]) ?
+		this.forces.spring[nodeA.type][nodeB.parent.type](nodeA,nodeB,false) :
 		this.forces.spring['_default'](nodeA,nodeB,false);
 
 	this.model.makeSpring( nodeA.particle, nodeB.particle,
@@ -375,21 +378,21 @@ ForceDirectedLayout.prototype.addSimilarity = function( nodeA, nodeB ) {
 }
 
 /* Build node views from configuration
- * 
+ *
  * @param {DataGraphNode} dataNode
  * @param {SnowflakeNode} modelNode
  */
 ForceDirectedLayout.prototype.makeNodeView = function( dataNode, modelNode ) {
 	var configNode = (dataNode.type in this.config) ? this.config[dataNode.type] : this.config['_default'];
-	return configNode.view( dataNode, modelNode );					
+	return configNode.view( dataNode, modelNode );
 }
 
 /* Build model nodes from configuration
- * 
+ *
  * @param {DataGraphNode} dataNode
  */
 ForceDirectedLayout.prototype.makeNodeModel = function( dataNode ) {
-	var configNode = (dataNode.type in this.config) ? this.config[dataNode.type] : this.config['_default']; 
+	var configNode = (dataNode.type in this.config) ? this.config[dataNode.type] : this.config['_default'];
 	for( var attribute in configNode.model(dataNode) ) {
 		dataNode[attribute] = configNode.model(dataNode)[attribute];
 	}
@@ -398,7 +401,7 @@ ForceDirectedLayout.prototype.makeNodeModel = function( dataNode ) {
 }
 
 /* Default node view builder
- * 
+ *
  * @param {SnowflakeNode} modelNode
  * @param {DataNode} dataNode
  */
@@ -423,8 +426,8 @@ ForceDirectedLayout.prototype.defaultNodeView = function( dataNode, modelNode ) 
 	return nodeElement;
 }
 
-/* Default edge view builder 
- * 
+/* Default edge view builder
+ *
  * @param {DataNode} dataNodeSrc
  * @param {DataNode} dataNodeDest
  */
