@@ -61,6 +61,7 @@ function make_node(aOot, aType, aInfo, aName, aParent) {
     explicitName: aInfo.name ? aInfo.name : null,
     fullName: aParent ? aParent.fullName + "." + aName : aName,
     parentName: aParent ? aParent.fullName : null,
+    loc: aInfo.loc,
     visibilityDescription: null,
   };
 
