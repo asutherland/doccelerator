@@ -76,7 +76,7 @@ var thunderbirdRepo = explodeRepo({
     // -- mail/ chrome
     {
       path: "mail/base/content/",
-      chrome_path: "messenger/content",
+      chrome_path: "messenger/content/",
       subsystem: "folder display",
       files: [
         "folderDisplay.js",
@@ -85,7 +85,7 @@ var thunderbirdRepo = explodeRepo({
     },
     {
       path: "mail/base/content/",
-      chrome_path: "messenger/content",
+      chrome_path: "messenger/content/",
       subsystem: "folder pane",
       files: [
         "folderPane.js",
@@ -93,7 +93,7 @@ var thunderbirdRepo = explodeRepo({
     },
     {
       path: "mail/base/content/",
-      chrome_path: "messenger/content",
+      chrome_path: "messenger/content/",
       files: [
         // everything commented out below is preprocessed and a jerk
         //"aboutDialog.js",
@@ -129,6 +129,36 @@ var thunderbirdRepo = explodeRepo({
         "widgetglue.js"
       ],
     },
+    // -- activity manager
+    {
+      path: "mail/components/activity/",
+      component_path: "",
+      files: [
+        "nsActivity.js",
+        "nsActivityManager.js",
+        "nsActivityManagerUI.js"
+      ]
+    },
+    {
+      path: "mail/components/activity/modules/",
+      module_path: "activity/",
+      subsystem: "activity manager",
+      files: [
+        "activityModules.js",
+        "alertHook.js",
+        "autosync.js",
+        "glodaIndexer.js",
+        "moveCopy.js",
+        "sendLater.js"
+      ]
+    },
+    {
+      path: "mail/components/activity/content/",
+      chrome_path: "messenger/content/",
+      files: [
+        "activity.js",
+      ]
+    },
     // -- mailnews/
     {
       path: "mailnews/base/src/",
@@ -155,7 +185,7 @@ var thunderbirdRepo = explodeRepo({
     // -- gloda
     {
       path: "mailnews/db/gloda/modules/",
-      module_path: "gloda",
+      module_path: "gloda/",
       subsystem: "gloda",
       files: [
         "collection.js",
@@ -170,7 +200,7 @@ var thunderbirdRepo = explodeRepo({
         "gloda.js",
         "index_ab.js",
         "indexer.js",
-        //"msg_search.js", // explodes on line 91-ish
+        "msg_search.js",
         "noun_freetag.js",
         "noun_mimetype.js",
         "noun_tag.js",
@@ -181,7 +211,7 @@ var thunderbirdRepo = explodeRepo({
     },
     {
       path: "mailnews/db/gloda/modules/",
-      module_path: "gloda",
+      module_path: "gloda/",
       subsystem: "logging",
       files: [
         "log4moz.js"
@@ -189,7 +219,7 @@ var thunderbirdRepo = explodeRepo({
     },
     {
       path: "mailnews/db/gloda/modules/",
-      module_path: "gloda",
+      module_path: "gloda/",
       subsystem: "mime streaming",
       files: [
         "mimemsg.js"
@@ -197,7 +227,7 @@ var thunderbirdRepo = explodeRepo({
     },
     {
       path: "mailnews/db/gloda/components/",
-      components_path: "",
+      component_path: "",
       subsystem: "mime streaming",
       files: [
         "jsmimeemitter.js"
@@ -218,3 +248,7 @@ var thunderbirdRepo = explodeRepo({
     }
   ]
 });
+
+Widgets.commands["Sync"] = function() {
+  fldb.updateRepo(thunderbirdRepo);
+};

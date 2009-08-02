@@ -23,6 +23,16 @@ var Widgets = {
   itemToolbar: {
   },
 
+  /**
+   * Simple/hackjob actions to expose via the "Controls" box.  Almost nothing in
+   *  here/that gets added to here should actually be here.
+   */
+  commands: {
+    "Refresh UI": function() {
+      Widgets.refreshAll();
+    }
+  },
+
   _initialized: false,
   serializationAliases: {},
   /**
@@ -87,6 +97,20 @@ var Widgets = {
     eligible.sort(this._compareWidgetsByPositionAndName);
 
     return eligible;
+  }
+};
+
+Widgets.sidebar.control = {
+  refresh: function() {
+    var jContent = $("<ul></ul>").appendTo($("#control .content").empty());
+    for (var key in Widgets.commands) {
+      var item = $("<li></li>")
+        .appendTo(jContent);
+      $("<a></a>")
+        .text(key)
+        .click(Widgets.commands[key])
+        .appendTo(item);
+    }
   }
 };
 
@@ -169,7 +193,9 @@ Activity.prototype = {
 };
 
 Widgets.sidebar.activities = {
+  liveActivityCount: 0,
   init: function() {
+    $("#activities").hide();
   },
   start: function Widget_activities_start(aDesc) {
     var jContent = $("#activities .content");
@@ -182,8 +208,17 @@ Widgets.sidebar.activities = {
       .progressbar()
       .appendTo(node);
 
+    if (this.liveActivityCount == 0)
+      $("#activities").show();
+    this.liveActivityCount++;
+
     var activity = new Activity(node, description, progressBar);
     return activity;
+  },
+  _activityDone: function Widget_activities__activityDone() {
+    this.liveActivityCount--;
+    if (this.liveActivityCount == 0)
+      $("#activities").hide();
   }
 };
 

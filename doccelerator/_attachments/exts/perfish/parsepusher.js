@@ -6,17 +6,38 @@
  *  mozilla specific on many fronts, so I have no problem doing this.
  */
 
+var curPerfProf = {
+  trace_file: "/vms/jaunty-i386/vprobe.out",
+  db_name: "perfish",
+};
 
-function ProfileParser(aRepoDefs) {
+var gPerfParse;
+Widgets.commands["ParsePerf"] = function() {
+  gPerfParse = new ProfileParser([thunderbirdRepo, mozilla191Repo],
+                                 curPerfProf);
+  console.log("perf parse", gPerfParse);
+  gPerfParse.startParse(curPerfProf.trace_file);
+};
+
+function ProfileParser(aRepoDefs, aPerfProfDef) {
   this.repos = aRepoDefs;
+  this.prof = aPerfProfDef;
+
+  // create the db, nuking it first if it already exists
+  this.db = $.couch.db(this.prof.db_name);
+  this.db.uri = urlbase + this.prof.db_name + "/";
+  this.db.drop();
+  this.db.create();
 
   // - fuse the chrome and module path maps
   this.chrome_map = {};
+  this.component_map = {};
   this.module_map = {};
 
   for (var iRepo = 0; iRepo < aRepoDefs.length; iRepo++) {
     var repo = aRepoDefs[iRepo];
     $.extend(this.chrome_map, repo.path_maps["chrome"]);
+    $.extend(this.component_map, repo.path_maps["component"]);
     $.extend(this.module_map, repo.path_maps["module"]);
   }
 }
@@ -30,13 +51,26 @@ ProfileParser.prototype = {
    *  URLs or, in the case of modules, file URLs to the installed dist path.
    */
   _norm_path: function ProfileParser__norm_path(aPath) {
+    // module or component
     if (this._reFile.test(aPath)) {
       // strip down to the dist subdir paths, then correct that
-      let idx = aPath.indexOf("dist/bin/modules/") + 17;
-      let module_path = aPath.substring(idx);
-      if (module_path in this.module_map)
-        return this.module_map[module_path];
-      throw new Error("Unable to map module path: " + module_path);
+      let idxModule = aPath.indexOf("dist/bin/modules/");
+      if (idxModule != -1) {
+        idxModule += 17;
+        let module_path = aPath.substring(idxModule);
+        if (module_path in this.module_map)
+          return this.module_map[module_path];
+        throw new Error("Unable to map module path: " + module_path);
+      }
+      let idxComponent = aPath.indexOf("dist/bin/components/");
+      if (idxComponent != -1) {
+        idxComponent += 20;
+        let component_path = aPath.substring(idxComponent);
+        if (component_path in this.component_map)
+          return this.component_map[component_path];
+        throw new Error("Unable to map component path: " + component_path);
+      }
+      throw new Error("Don't know how to transform file path: " + aPath);
     }
     else if (this._reChrome.test(aPath)) {
       let chrome_path = aPath.substring(9);
@@ -53,13 +87,16 @@ ProfileParser.prototype = {
   },
 
   _chew_block: function ProfileParser__chew_block(aTimestamp, aJSLines) {
-    let last_func_info = null;
+    // The first stack frame is the current stack frame, and each subsequent
+    //  frame is the parent frame of the preceding frame.  called_func_info
+    //  is the function info for the previous line (and frame)
+    let called_func_info = null;
     for each (let [, line] in Iterator(aJSLines)) {
       let c2 = line.lastIndexOf(":");
       let c1 = line.lastIndexOf(":", c2-1);
       let path = line.substring(1, c1);
-      let funcName = line.substring(c1+1, c2);
-      let line = parseInt(line.substring(c2+1));
+      let func_name = line.substring(c1+1, c2);
+      let line_num = parseInt(line.substring(c2+1));
 
       // normalize the path, computing and caching if not already cached
       if (path in this.cached_paths)
@@ -69,38 +106,47 @@ ProfileParser.prototype = {
       // native functions
       if (path == "native") {
         // just skip completely useless native frames
-        if (funcName == "<none>")
+        if (func_name == "<none>")
           continue;
         // Useful native frames have a function name, but that's it (for now).
         //  Use the name as the line number for them.
-        line = funcName;
+        line_num = func_name;
       }
+
+      let canonical_name = path + ":" + line_num;
 
       let file_line_map = (path in this.files) ? this.files[path]
                                                : this.files[path] = {};
 
       let func_info;
-      if (line in file_line_map) {
-        func_info = file_line_map[line];
+      if (line_num in file_line_map) {
+        func_info = file_line_map[line_num];
       }
       else {
         this.func_count++;
-        func_info = file_line_map[line] = {
-          funcName: func,
+        func_info = file_line_map[line_num] = {
+          func_name: func_name,
           branch_samples: 0,
-          leaf_samples: 0
+          leaf_samples: 0,
+          // Maps canonical name to the number of times the given canonical name
+          //  was observed as called on the stack.  If a call shows up multiple
+          //  times in a stack, each call gets counted.
+          called: {},
         };
       }
 
-      if (last_func_info) {
-
+      if (!called_func_info) {
+        func_info.leaf_samples++;
       }
-
-      last_func_info = func_info;
+      else {
+        func_info.branch_samples++;
+        if (!(canonical_name in func_info.called))
+          func_info.called[canonical_name] = 1;
+        else
+          func_info.called[canonical_name]++;
+      }
+      called_func_info = func_info;
     }
-
-    if(last_func_info)
-      last_func_info.leaf_samples++;
   },
 
   startParse: function ProfileParser_startParse(aUrl) {
@@ -117,11 +163,10 @@ ProfileParser.prototype = {
               setTimeout(dis._parseDriver, 0, dis);
             }
            });
-
   },
 
   _parseDriver: function ProfileParser__parseDriver(aThis) {
-    // !!! no 'this' !!!
+    // REMEMBER: no (valid) 'this' in here
     let status = aThis._parseGenerator.next();
     if (status) {
       let progress;
@@ -174,8 +219,9 @@ ProfileParser.prototype = {
         timestamp = (timestamp >> 32) | ((timestamp & 0xffffffff) << 32);
         js_lines = [];
       }
-      // "JS stack:".  throw it away
+      // "JS stack:". ignore.
       else if (firstChar == "J") {
+        // throw it away, nop style
       }
       // it's a JS stack entry, save it to process once we've seen all of this
       //  block
@@ -184,7 +230,9 @@ ProfileParser.prototype = {
       }
       // unknown => asplode
       else {
-        throw new Error("Do not know how to parse line: " + line);
+        line = line.trim();
+        if (line)
+          throw new Error("Do not know how to parse line: " + line);
       }
     }
     if (timestamp)
