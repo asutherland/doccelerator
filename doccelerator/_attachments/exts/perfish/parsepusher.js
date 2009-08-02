@@ -13,21 +13,17 @@ var curPerfProf = {
 
 var gPerfParse;
 Widgets.commands["ParsePerf"] = function() {
-  gPerfParse = new ProfileParser([thunderbirdRepo, mozilla191Repo],
-                                 curPerfProf);
-  console.log("perf parse", gPerfParse);
-  gPerfParse.startParse(curPerfProf.trace_file);
+  User.attemptLogin(function() {
+    gPerfParse = new ProfileParser([thunderbirdRepo, mozilla191Repo],
+                                   curPerfProf);
+    console.log("perf parse", gPerfParse);
+    gPerfParse.startParse(curPerfProf.trace_file);
+  });
 };
 
 function ProfileParser(aRepoDefs, aPerfProfDef) {
   this.repos = aRepoDefs;
   this.prof = aPerfProfDef;
-
-  // create the db, nuking it first if it already exists
-  this.db = $.couch.db(this.prof.db_name);
-  this.db.uri = urlbase + this.prof.db_name + "/";
-  this.db.drop();
-  this.db.create();
 
   // - fuse the chrome and module path maps
   this.chrome_map = {};
@@ -123,8 +119,9 @@ ProfileParser.prototype = {
         func_info = file_line_map[line_num];
       }
       else {
-        this.func_count++;
         func_info = file_line_map[line_num] = {
+          src_path: path,
+          line: line_num,
           func_name: func_name,
           branch_samples: 0,
           leaf_samples: 0,
@@ -133,6 +130,7 @@ ProfileParser.prototype = {
           //  times in a stack, each call gets counted.
           called: {},
         };
+        this.func_docs.push(func_info);
       }
 
       if (!called_func_info) {
@@ -165,19 +163,30 @@ ProfileParser.prototype = {
            });
   },
 
-  _parseDriver: function ProfileParser__parseDriver(aThis) {
+  _parseDriver: function ProfileParser__parseDriver(aThis, aArg, aLateness) {
     // REMEMBER: no (valid) 'this' in here
-    let status = aThis._parseGenerator.next();
+    let status;
+    if (aLateness !== undefined)
+      status = aThis._parseGenerator.send(aArg);
+    else
+      status = aThis._parseGenerator.next();
+
+    // status is of the form:
+    // [phase string, phase progress, schedule via timer?]
     if (status) {
       let progress;
       if (status[0] == "parsing")
         progress = status[1] / aThis.total_lines;
+      else if (status[0] == "chewing")
+        progress = status[1] / aThis.func_docs.length;
       else
-        progress = status[1] / aThis.func_count;
+        progress = status[1];
       aThis._progress.setStatus(status[0], progress);
 
-      // reschedule ourselves
-      setTimeout(aThis._parseDriver, 50, aThis);
+      // reschedule ourselves if required.  (it's possible an async notification
+      //  will kick us.)
+      if (status[2])
+        setTimeout(aThis._parseDriver, 50, aThis);
     }
     else {
       aThis._progress.done();
@@ -192,6 +201,47 @@ ProfileParser.prototype = {
     this.files = {};
     this.cached_paths = {};
     this.func_count = 0;
+    this.func_docs = [];
+
+    let dis = this;
+    let driverCallback = function() {
+                           dis._parseDriver(dis, 0);
+                         };
+
+    // create the db, nuking it first if it already exists
+    this.db = $.couch.db(this.prof.db_name);
+    this.db.uri = urlbase + this.prof.db_name + "/";
+    this.db.drop({success: driverCallback, failure: driverCallback});
+    yield ["db init", 25, false];
+    this.db.create({success: driverCallback});
+    yield ["db init", 50, false];
+    this.db.saveDoc({
+      _id: "_design/perfish",
+      views: {
+        by_loc: {
+          map: "function(doc) { \
+  if (doc.src_path && doc.line) \
+    emit([doc.src_path, doc.line], null); \
+}"
+        },
+        by_leaf_count: {
+          map: "function(doc) { \
+  emit(doc.leaf_samples, null);\
+}"
+        },
+        by_branch_count: {
+          map: "function(doc) { \
+  emit(doc.branch_samples, null);\
+}"
+        },
+        by_total_count: {
+          map: "function(doc) { \
+  emit(doc.leaf_samples + doc.branch_samples, null);\
+}"
+        }
+      }
+    }, {success: driverCallback});
+    yield ["db init", 75, false];
 
     const reTStamp = /^\*\*\* TIME: (\d+)/;
 
@@ -207,7 +257,7 @@ ProfileParser.prototype = {
       let firstChar = line[0];
 
       if (iLine % yieldEvery == 0)
-        yield ["parsing", iLine];
+        yield ["parsing", iLine, true];
 
       if (firstChar == "*") {
         if (timestamp)
@@ -239,6 +289,23 @@ ProfileParser.prototype = {
       this._chew_block(timestamp, js_lines);
 
     // --- Post-process the function aggregations into class aggregates.
+
+    // --- Fix-up Documents with UUIDs
+    $.get(urlbase + "_uuids", {count: this.func_docs.length},
+          function (data) {
+            dis._parseDriver(dis, data, 0);
+          },
+          "json");
+    let data = yield ["saving docs", 0, false];
+    let uuids = data.uuids;
+
+    for each (let [iFuncInfo, func_info] in Iterator(this.func_docs)) {
+      func_info._id = uuids[iFuncInfo];
+    }
+    this.db.bulkSave(this.func_docs, {
+                       success: driverCallback
+                     });
+    yield ["saving docs", 20, false];
 
 
     yield null;
