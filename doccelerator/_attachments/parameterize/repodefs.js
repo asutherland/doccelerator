@@ -64,7 +64,16 @@ var thunderbirdRepo = explodeRepo({
          // 'http://hg.mozilla.org/comm-central/raw-file/tip/',
   repo_name: 'comm-central',
   dirs: [
-    // -- mail/
+    // -- mail/ modules
+    {
+      path: "mail/base/modules/",
+      module_path: "",
+      files: [
+        "MailConsts.js",
+        "MailUtils.js"
+      ]
+    },
+    // -- mail/ chrome
     {
       path: "mail/base/content/",
       chrome_path: "messenger/content",
@@ -86,8 +95,38 @@ var thunderbirdRepo = explodeRepo({
       path: "mail/base/content/",
       chrome_path: "messenger/content",
       files: [
+        // everything commented out below is preprocessed and a jerk
+        //"aboutDialog.js",
+        //"ABSearchDialog.js",
+        "commandglue.js",
+        //"contentAreaClick.js",
+        "editContactOverlay.js",
+        "FilterListDialog.js",
+        //"hiddenWindow.js",
+        "mail3PaneWindowCommands.js",
+        //"mailCommands.js",
+        "mailContextMenus.js",
+        //"mailCore.js",
+        //"mail-offline.js",
         "mailWindow.js",
-
+        "mailWindowOverlay.js",
+        "messageWindow.js",
+        "msgHdrViewOverlay.js",
+        "msgMail3PaneWindow.js",
+        "msgViewNavigation.js",
+        "newmailalert.js",
+        "newTagDialog.js",
+        //"nsContextMenu.js",
+        "phishingDetector.js",
+        "searchBar.js",
+        "SearchDialog.js",
+        "selectionsummaries.js",
+        "specialTabs.js",
+        "subscribe.js",
+        //"systemIntegrationDialog.js",
+        "threadPane.js",
+        //"utilityOverlay.js",
+        "widgetglue.js"
       ],
     },
     // -- mailnews/
@@ -131,7 +170,7 @@ var thunderbirdRepo = explodeRepo({
         "gloda.js",
         "index_ab.js",
         "indexer.js",
-        "msg_search.js",
+        //"msg_search.js", // explodes on line 91-ish
         "noun_freetag.js",
         "noun_mimetype.js",
         "noun_tag.js",

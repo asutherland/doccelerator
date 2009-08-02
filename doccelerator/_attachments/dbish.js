@@ -56,16 +56,34 @@ function RepoProcessor(aRepo) {
   this.repo = aRepo;
   this.current_file = null;
   this.files_to_process = this.repo.files.concat();
+  this.activity = Widgets.sidebar.activities.start(aRepo.repo_name);
+  this.total_files = this.files_to_process.length;
 }
 RepoProcessor.prototype = {
   sync: function RepoProcessor_sync() {
-    if (!this.files_to_process.length) {
+    if (!this._findNextSourceFile()) {
       fldb.doneProcessing(this);
+      this.activity.done();
       return true;
     }
 
-    this.current_file = this.files_to_process.shift();
+    this.activity.setStatus(null,
+      (this.total_files - this.files_to_process.length) / this.total_files);
+
     this._getSource();
+    return false;
+  },
+  _findNextSourceFile: function() {
+    while (this.files_to_process.length) {
+      this.current_file = this.files_to_process.shift();
+      var dotIndex = this.current_file.lastIndexOf(".");
+      var extension = this.current_file.substring(dotIndex+1);
+      // we only can process js/jsm files currently, no XBL or XUL
+      if (extension == "js" ||
+          extension == "jsm")
+        return true;
+    }
+
     return false;
   },
   /**

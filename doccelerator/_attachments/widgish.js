@@ -154,6 +154,39 @@ Widgets.sidebar.files = {
   }
 };
 
+function Activity(aEntireNode, aDescNode, aProgressBar) {
+  this.node = aEntireNode;
+  this.descNode = aDescNode;
+  this.progressBar = aProgressBar;
+}
+Activity.prototype = {
+  setStatus: function(aPhase, aProgress) {
+    this.progressBar.progressbar("value", Math.floor(aProgress * 100));
+  },
+  done: function() {
+    this.node.remove();
+  }
+};
+
+Widgets.sidebar.activities = {
+  init: function() {
+  },
+  start: function Widget_activities_start(aDesc) {
+    var jContent = $("#activities .content");
+    var node = $("<div></div>")
+      .appendTo(jContent);
+    var description = $("<span></span>")
+      .text(aDesc)
+      .appendTo(node);
+    var progressBar = $("<div></div>")
+      .progressbar()
+      .appendTo(node);
+
+    var activity = new Activity(node, description, progressBar);
+    return activity;
+  }
+};
+
 Widgets.sidebar.remember = {
   init: function() {
   }

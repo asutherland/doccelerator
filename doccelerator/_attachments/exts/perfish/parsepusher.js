@@ -32,11 +32,20 @@ ProfileParser.prototype = {
   _norm_path: function ProfileParser__norm_path(aPath) {
     if (this._reFile.test(aPath)) {
       // strip down to the dist subdir paths, then correct that
+      let idx = aPath.indexOf("dist/bin/modules/") + 17;
+      let module_path = aPath.substring(idx);
+      if (module_path in this.module_map)
+        return this.module_map[module_path];
+      throw new Error("Unable to map module path: " + module_path);
     }
     else if (this._reChrome.test(aPath)) {
+      let chrome_path = aPath.substring(9);
+      if (chrome_path in this.chrome_map)
+        return this.chrome_map[chrome_path];
+      throw new Error("Unable to map chrome path: " + chrome_path);
     }
     else if (this._reNull.test(aPath)) {
-
+      return "native";
     }
     else {
       throw new Error("Unknown path format: " + aPath);
@@ -44,6 +53,7 @@ ProfileParser.prototype = {
   },
 
   _chew_block: function ProfileParser__chew_block(aTimestamp, aJSLines) {
+    let last_func_info = null;
     for each (let [, line] in Iterator(aJSLines)) {
       let c2 = line.lastIndexOf(":");
       let c1 = line.lastIndexOf(":", c2-1);
@@ -51,26 +61,108 @@ ProfileParser.prototype = {
       let funcName = line.substring(c1+1, c2);
       let line = parseInt(line.substring(c2+1));
 
+      // normalize the path, computing and caching if not already cached
+      if (path in this.cached_paths)
+        path = this.cached_paths[path];
+      else
+        path = this.cached_paths[path] = this._norm_path(path);
+      // native functions
+      if (path == "native") {
+        // just skip completely useless native frames
+        if (funcName == "<none>")
+          continue;
+        // Useful native frames have a function name, but that's it (for now).
+        //  Use the name as the line number for them.
+        line = funcName;
+      }
+
+      let file_line_map = (path in this.files) ? this.files[path]
+                                               : this.files[path] = {};
+
+      let func_info;
+      if (line in file_line_map) {
+        func_info = file_line_map[line];
+      }
+      else {
+        this.func_count++;
+        func_info = file_line_map[line] = {
+          funcName: func,
+          branch_samples: 0,
+          leaf_samples: 0
+        };
+      }
+
+      if (last_func_info) {
+
+      }
+
+      last_func_info = func_info;
+    }
+
+    if(last_func_info)
+      last_func_info.leaf_samples++;
+  },
+
+  startParse: function ProfileParser_startParse(aUrl) {
+    let dis = this;
+    $.ajax({type: "GET",
+            url: aUrl,
+            dataType: "text",
+            success: function (aData) {
+              let lines = aData.split("\n");
+              dis.total_lines = lines.length;
+              dis._parseGenerator = dis._parse(lines);
+              dis._progress =
+                Widgets.sidebar.activities.start("Parsing Profile");
+              setTimeout(dis._parseDriver, 0, dis);
+            }
+           });
+
+  },
+
+  _parseDriver: function ProfileParser__parseDriver(aThis) {
+    // !!! no 'this' !!!
+    let status = aThis._parseGenerator.next();
+    if (status) {
+      let progress;
+      if (status[0] == "parsing")
+        progress = status[1] / aThis.total_lines;
+      else
+        progress = status[1] / aThis.func_count;
+      aThis._progress.setStatus(status[0], progress);
+
+      // reschedule ourselves
+      setTimeout(aThis._parseDriver, 50, aThis);
+    }
+    else {
+      aThis._progress.done();
     }
   },
 
   /**
    * Parse a profile output run
    */
-  parse: function ProfileParser_parse(aLineGenerator) {
+  _parse: function ProfileParser__parse(aLineGenerator) {
     // map aliased files to file info
     this.files = {};
+    this.cached_paths = {};
+    this.func_count = 0;
 
     const reTStamp = /^\*\*\* TIME: (\d+)/;
+
+    const yieldEvery = 1000;
 
     let timestamp = null;
     let js_lines = null;
 
     // --- Parse the trace, creating invocation summaries for functions and file
     //     aggregations.
-    for each (let [, line] in Iterator(aLineGenerator)) {
+    for each (let [iLine, line] in Iterator(aLineGenerator)) {
       let match;
       let firstChar = line[0];
+
+      if (iLine % yieldEvery == 0)
+        yield ["parsing", iLine];
 
       if (firstChar == "*") {
         if (timestamp)
@@ -101,5 +193,6 @@ ProfileParser.prototype = {
     // --- Post-process the function aggregations into class aggregates.
 
 
+    yield null;
   }
 };
