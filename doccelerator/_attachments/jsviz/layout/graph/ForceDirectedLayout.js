@@ -130,11 +130,19 @@ ForceDirectedLayout.prototype.handleMouseMoveEvent = function( e ) {
 		// TODO: This is a very temporary fix. In Firefox 2, our EventHandler
 		// factory piles mouse events onto the arguments list.
 		e = arguments[arguments.length-1];
-		var mouseX = e.pageX ? e.pageX : e.clientX;
-		var mouseY = e.pageY ? e.pageY : e.clientY;
+                // get the coordinates in the client view-space of the mouse click
+		var mouseX = e.clientX;
+		var mouseY = e.clientY;
 
-		mouseX -= this.view.centerX;
-		mouseY -= this.view.centerY;
+                // transform the coordinates so that they are relative to the SVG document
+                var clientBounds = this.container.getBoundingClientRect();
+		mouseX -= clientBounds.left;
+		mouseY -= clientBounds.top;
+
+                // now transform them so that they compensate for the origin of
+                //  the coordinate space
+                mouseX -= this.view.centerX;
+                mouseY -= this.view.centerY;
 
 		// set the node position
 		this.model.particles[this.model.selected].positionX=mouseX/this.view.skewX;
