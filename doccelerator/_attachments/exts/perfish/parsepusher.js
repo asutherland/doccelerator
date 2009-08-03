@@ -139,10 +139,10 @@ ProfileParser.prototype = {
       }
       else {
         func_info.branch_samples++;
-        if (!(canonical_name in func_info.called))
-          func_info.called[canonical_name] = 1;
+        if (!(called_func_info.canonical_name in func_info.called))
+          func_info.called[called_func_info.canonical_name] = 1;
         else
-          func_info.called[canonical_name]++;
+          func_info.called[called_func_info.canonical_name]++;
       }
       called_func_info = func_info;
     }

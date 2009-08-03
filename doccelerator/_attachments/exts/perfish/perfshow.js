@@ -17,7 +17,7 @@ Widgets.body.perfTop = {
   },
   _gotLeafCounts: function(aDocs, aPerfInfo) {
     // arbitrary decimation threshold
-    aPerfInfo.thresh_factor = 32;
+    aPerfInfo.thresh_factor = 10;
     aPerfInfo.max_leaf_count = aDocs[0].leaf_samples;
     aPerfInfo.thresh_leaf_count = Math.floor(aPerfInfo.max_leaf_count /
                                              aPerfInfo.thresh_factor);
@@ -35,7 +35,7 @@ Widgets.body.perfTop = {
       aPerfInfo.known_funcs[doc.canonical_name] = doc;
     }
 
-    DBUtils.getDocs(aPerfInfo.db, "by_leaf_count", "perfish", {
+    DBUtils.getDocs(aPerfInfo.db, "by_branch_count", "perfish", {
                       descending: true, limit: 64
                     }, Widgets.body.perfTop._gotBranchCounts, aPerfInfo);
   },
@@ -59,30 +59,25 @@ Widgets.body.perfTop = {
     aPerfInfo.callback = null;
     callback();
   },
-  show: function(aNode, aPerfInfo, aDocs) {
-    var graph = $("<div></div>")
+  show: function(aNode, aPerfInfo) {
+    aPerfInfo.graph = $("<div></div>")
       .addClass("graph-fd")
       .appendTo(aNode);
-    var layout = aPerfInfo.layout = Widgets.widget.fdgraph.fab(graph[0]);
+    setTimeout(function() {
+                 Widgets.body.perfTop._showFollowOn(aPerfInfo);
+               }, 0);
+  },
+  _showFollowOn: function(aPerfInfo) {
+    var layout = aPerfInfo.layout =
+      Widgets.widget.fdgraph.fab(aPerfInfo.graph[0]);
+    layout.config = new layout.config(layout);
 
-    var iDoc, doc, node;
+    var iDoc, doc, node, maxCount;
     // map canonical paths to nodes
     var node_map = {};
 
     // -- build the nodes
-    var maxCount = aPerfInfo.max_leaf_count;
-    for (iDoc = 0; iDoc < aPerfInfo.leaf_funcs.length; iDoc++) {
-      doc = aPerfInfo.leaf_funcs[iDoc];
-      node = new DataGraphNode();
-      var percentOfMax = doc.leaf_samples / maxCount;
-      var lightness = 100 - (Math.floor(50 * percentOfMax));
-      node.color = "hsl(0,100%," + lightness + "%)";
-      node.radius = 10;
-      layout.newDataGraphNode(node);
-
-      node_map[doc.canonical_name] = node;
-    }
-
+    maxCount = aPerfInfo.branch_funcs[0].branch_samples;
     for (iDoc = 0; iDoc < aPerfInfo.branch_funcs.length; iDoc++) {
       doc = aPerfInfo.branch_funcs[iDoc];
       node = new DataGraphNode();
@@ -95,7 +90,20 @@ Widgets.body.perfTop = {
       node_map[doc.canonical_name] = node;
     }
 
-    var all_docs = aPerfInfo.leaf_funcs.concat(aPerfInfo.branch_funcs);
+    maxCount = aPerfInfo.max_leaf_count;
+    for (iDoc = 0; iDoc < aPerfInfo.leaf_funcs.length; iDoc++) {
+      doc = aPerfInfo.leaf_funcs[iDoc];
+      node = new DataGraphNode();
+      var percentOfMax = doc.leaf_samples / maxCount;
+      var lightness = 100 - (Math.floor(50 * percentOfMax));
+      node.color = "hsl(0,100%," + lightness + "%)";
+      node.radius = 10;
+      layout.newDataGraphNode(node);
+
+      node_map[doc.canonical_name] = node;
+    }
+
+    var all_docs = aPerfInfo.branch_funcs.concat(aPerfInfo.leaf_funcs);
 
     // -- build the edges
     for (iDoc = 0; iDoc < all_docs.length; iDoc++) {
@@ -111,7 +119,7 @@ Widgets.body.perfTop = {
       }
     }
 
-    var buildTimer = new Timer(150);
+    var buildTimer = new Timer(50);
     buildTimer.subscribe(layout);
     buildTimer.start();
   },
