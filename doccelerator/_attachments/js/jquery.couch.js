@@ -92,7 +92,7 @@
           $.ajax({
             type: "POST", url: this.uri + "_compact",
             contentType: "application/json",
-            dataType: "json", data: "", processData: false, 
+            dataType: "json", data: "", processData: false,
             complete: function(req) {
               var resp = $.httpData(req, "json");
               if (req.status == 202) {
@@ -157,6 +157,25 @@
         },
         allDocs: function(options) {
           options = options || {};
+          if (options.keys) {
+            $.ajax({
+              type: "POST",
+              url: this.uri + "_all_docs" + encodeOptions(options),
+              contentType: "application/json",
+              data: toJSON({keys: options.keys}), dataType: "json",
+              complete: function(req) {
+                var resp = $.httpData(req, "json");
+                if (req.status == 200) {
+                  if (options.success) options.success(resp);
+                } else if (options.error) {
+                  options.error(req.status, resp.error, resp.reason);
+                } else {
+                  alert("An error occurred accessing the view: " + resp.reason);
+                }
+              }
+            });
+            return;
+          }
           $.ajax({
             type: "GET", url: this.uri + "_all_docs" + encodeOptions(options),
             dataType: "json",
@@ -200,7 +219,7 @@
                   });
                 });
               }
-            });            
+            });
           } else {
             alert("please provide an eachApp function for allApps()");
           }
@@ -318,6 +337,24 @@
         view: function(name, options) {
           options = options || {};
           name = name.split('/');
+          if (options.keys) {
+            $.ajax({
+              type: "POST", url: this.uri + "_design/" + name[0] + "/_view/" + name[1] + encodeOptions(options),
+              contentType: "application/json",
+              data: toJSON({keys: options.keys}), dataType: "json",
+              complete: function(req) {
+                var resp = $.httpData(req, "json");
+                if (req.status == 200) {
+                  if (options.success) options.success(resp);
+                } else if (options.error) {
+                  options.error(req.status, resp.error, resp.reason);
+                } else {
+                  alert("An error occurred accessing the view '" + name + "': " + resp.reason);
+                }
+              }
+            });
+            return;
+          }
           $.ajax({
             type: "GET", url: this.uri + "_design/" + name[0] + "/_view/" + name[1] + encodeOptions(options),
             dataType: "json",
@@ -382,6 +419,8 @@
       for (var name in options) {
         if (name == "error" || name == "success") continue;
         var value = options[name];
+        // keys will result in a POST, so we don't need them in our GET part
+        if (name == "keys") continue;
         if (name == "key" || name == "startkey" || name == "endkey") {
           value = toJSON(value);
         }
