@@ -17,7 +17,7 @@ Widgets.body.perfTop = {
   },
   _gotLeafCounts: function(aDocs, aPerfInfo) {
     // arbitrary decimation threshold
-    aPerfInfo.thresh_factor = 10;
+    aPerfInfo.thresh_factor = 8;
     aPerfInfo.max_leaf_count = aDocs[0].leaf_samples;
     aPerfInfo.thresh_leaf_count = Math.floor(aPerfInfo.max_leaf_count /
                                              aPerfInfo.thresh_factor);
@@ -85,6 +85,7 @@ Widgets.body.perfTop = {
       var lightness = 100 - (Math.floor(50 * percentOfMax));
       node.color = "hsl(0,100%," + lightness + "%)";
       node.radius = 10;
+      node.func = doc;
       layout.newDataGraphNode(node);
 
       node_map[doc.canonical_name] = node;
@@ -98,6 +99,7 @@ Widgets.body.perfTop = {
       var lightness = 100 - (Math.floor(50 * percentOfMax));
       node.color = "hsl(240,100%," + lightness + "%)";
       node.radius = 6;
+      node.func = doc;
       layout.newDataGraphNode(node);
 
       node_map[doc.canonical_name] = node;
@@ -106,6 +108,67 @@ Widgets.body.perfTop = {
     var all_docs = aPerfInfo.branch_funcs.concat(aPerfInfo.leaf_funcs);
 
     // -- build the edges
+    layout.forces.spring._default = function(nodeA, nodeB, isParentChild) {
+      var funcA = nodeA.func;
+      var funcB = nodeB.func;
+      // normalize so funcA calls funcB, choosing the stronger relationship
+      //  if it somehow happens in both directions.
+      // (really, the both directions case is what we are normalizing for here,
+      //  unless the graph code is going to swap the arguments in our edges
+      //  arbitrarily).
+      if (funcA.canonical_name in funcB.called) {
+        if ((funcB.canonical_name in funcA.called) &&
+            funcA.called[funcB.canonical_name] > funcB.called[funcA.canonical_name]) {
+          // do nothing since the A relationship is stronger
+        }
+        else {
+          // swap the relationships because only B exists or B is stronger
+          // (I don't think we have destructuring assignment in JS 1.5?)
+          var bob;
+          bob = funcB;
+          funcB = funcA;
+          funcA = bob;
+
+        }
+      }
+
+      var callCount = funcA.called[funcB.canonical_name];
+      // strongest link is at max leaf count, decaying from there
+      var normalizedStrength = callCount / aPerfInfo.max_leaf_count;
+      if (normalizedStrength > 1)
+        normalizedStrength = 1;
+      return {
+        springConstant: 0.1 + 0.3 * normalizedStrength,
+        dampingConstant: 0.1 + 0.3 * normalizedStrength,
+        restLength: 100 - (60 * normalizedStrength),
+      };
+    };
+    layout.viewEdgeBuilder = function (nodeA, nodeB) {
+      var funcA = nodeA.func;
+      var funcB = nodeB.func;
+
+      var callCount = funcA.called[funcB.canonical_name];
+      var normalizedStrength = callCount / aPerfInfo.max_leaf_count;
+      if (normalizedStrength > 1)
+        normalizedStrength = 1;
+
+      if (this.svg) {
+        return {
+          'stroke': "rgba(128, 128, 128, 0." +
+                      Math.floor(2 + 5 * normalizedStrength) + ")",
+          'stroke-width': Math.floor(2 + 4 * normalizedStrength) + 'px',
+        };
+      }
+      else {
+        return {
+          'pixelColor': "rgba(128, 128, 128, 0.5)",
+          'pixelWidth': '2px',
+          'pixelHeight': '2px',
+          'pixels': 5
+        };
+      }
+    };
+
     for (iDoc = 0; iDoc < all_docs.length; iDoc++) {
       doc = all_docs[iDoc];
       node = node_map[doc.canonical_name];

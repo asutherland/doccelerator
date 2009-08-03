@@ -163,7 +163,7 @@ td {
 .graph-fd {
   width: 95%;
   width: -moz-available;
-  height: 30em;
+  height: 40em;
 }
 
 #sidebar .happybox h3 {
