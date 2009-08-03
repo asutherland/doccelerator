@@ -115,6 +115,11 @@ var UI = {
                     function UI_remove_hidden() {
                       var thing = aDocWidget.data("what");
                       aDocWidget.remove();
+                      var widget = (thing.type in Widgets.body ?
+                                      Widgets.body[thing.type] :
+                                      Widgets.body["default"]);
+                      if ("remove" in widget)
+                        widget.remove(aDocWidget, thing);
                       UI.history.onRemove(thing, aDocWidget);
                     });
   },

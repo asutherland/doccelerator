@@ -77,19 +77,6 @@ Widgets.body.perfTop = {
     var node_map = {};
 
     // -- build the nodes
-    maxCount = aPerfInfo.branch_funcs[0].branch_samples;
-    for (iDoc = 0; iDoc < aPerfInfo.branch_funcs.length; iDoc++) {
-      doc = aPerfInfo.branch_funcs[iDoc];
-      node = new DataGraphNode();
-      var percentOfMax = doc.branch_samples / maxCount;
-      var lightness = 100 - (Math.floor(50 * percentOfMax));
-      node.color = "hsl(240,100%," + lightness + "%)";
-      node.radius = 6;
-      layout.newDataGraphNode(node);
-
-      node_map[doc.canonical_name] = node;
-    }
-
     maxCount = aPerfInfo.max_leaf_count;
     for (iDoc = 0; iDoc < aPerfInfo.leaf_funcs.length; iDoc++) {
       doc = aPerfInfo.leaf_funcs[iDoc];
@@ -98,6 +85,19 @@ Widgets.body.perfTop = {
       var lightness = 100 - (Math.floor(50 * percentOfMax));
       node.color = "hsl(0,100%," + lightness + "%)";
       node.radius = 10;
+      layout.newDataGraphNode(node);
+
+      node_map[doc.canonical_name] = node;
+    }
+
+    maxCount = aPerfInfo.branch_funcs[0].branch_samples;
+    for (iDoc = 0; iDoc < aPerfInfo.branch_funcs.length; iDoc++) {
+      doc = aPerfInfo.branch_funcs[iDoc];
+      node = new DataGraphNode();
+      var percentOfMax = doc.branch_samples / maxCount;
+      var lightness = 100 - (Math.floor(50 * percentOfMax));
+      node.color = "hsl(240,100%," + lightness + "%)";
+      node.radius = 6;
       layout.newDataGraphNode(node);
 
       node_map[doc.canonical_name] = node;
@@ -119,9 +119,13 @@ Widgets.body.perfTop = {
       }
     }
 
-    var buildTimer = new Timer(50);
+    var buildTimer = aPerfInfo.timer = new Timer(50);
     buildTimer.subscribe(layout);
     buildTimer.start();
+  },
+  remove: function(aNode, aPerfInfo) {
+    aPerfInfo.timer.stop();
+    aPerfInfo.layout.model.stop();
   },
   serialize: function(aPerfInfo) {
     return aPerfInfo.db.name;
