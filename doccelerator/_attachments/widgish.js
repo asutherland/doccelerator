@@ -33,6 +33,16 @@ var Widgets = {
     }
   },
 
+  /**
+   * Generic widget bindings that presumably get used inside body/bodyDecorator
+   *  blocks.
+   * This currently is just a helpeful namespace with no implied semantics,
+   *  although that should change at some point.
+   */
+  widget: {
+
+  },
+
   _initialized: false,
   serializationAliases: {},
   /**

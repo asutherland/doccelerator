@@ -120,6 +120,7 @@ ProfileParser.prototype = {
       }
       else {
         func_info = file_line_map[line_num] = {
+          canonical_name: canonical_name,
           src_path: path,
           line: line_num,
           func_name: func_name,

@@ -411,8 +411,8 @@ ForceDirectedLayout.prototype.defaultNodeView = function( dataNode, modelNode ) 
 		nodeElement = document.createElementNS("http://www.w3.org/2000/svg", "circle");
 		nodeElement.setAttribute('stroke', '#444444');
 		nodeElement.setAttribute('stroke-width', '.25px');
-		nodeElement.setAttribute('fill', "#aaaaaa");
-		nodeElement.setAttribute('r', 6 + 'px');
+		nodeElement.setAttribute('fill', dataNode.color);
+		nodeElement.setAttribute('r', dataNode.radius + 'px');
 		nodeElement.onmousedown =  new EventHandler( this, this.handleMouseDownEvent, modelNode.id )
 	} else {
 		nodeElement = document.createElement( 'div' );

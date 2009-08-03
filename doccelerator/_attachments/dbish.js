@@ -245,7 +245,7 @@ var fldb = {
       docs.push(aRows[i].doc);
     return docs;
   },
-  getDocs: function(aViewName, aKey, aCallback) {
+  getDocs: function(aViewName, aKey, aCallback, aDB) {
     DB.view(design + "/" + aViewName, {
               key: aKey,
               include_docs: true,
@@ -283,5 +283,20 @@ var DBUtils = {
     }
 
     return filtered;
+  },
+
+  getDocs: function(aDB, aViewName, aDesignName, aOptions, aCallback, aExtra) {
+    aOptions.include_docs = true;
+    aOptions.success = function(data) {
+                var docs = [];
+                var rows = data.rows;
+                for (var i = 0; i < rows.length; i++)
+                  docs.push(rows[i].doc);
+                if (aExtra !== undefined)
+                  aCallback(docs, aExtra);
+                else
+                  aCallback(docs);
+              };
+    aDB.view(aDesignName + "/" + aViewName, aOptions);
   },
 };

@@ -160,6 +160,12 @@ td {
   white-space: pre-wrap;
 }
 
+.graph-fd {
+  width: 95%;
+  width: -moz-available;
+  height: 30em;
+}
+
 #sidebar .happybox h3 {
   -moz-border-radius: 6px;
   -moz-background-clip:border;
