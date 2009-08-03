@@ -1,9 +1,9 @@
 Widgets.commands["ShowPerf"] = function() {
-  var perfInfo = Widgets.body.topPerf.deserialize("perfish");
+  var perfInfo = Widgets.body.perfTop.deserialize("perfish");
   UI.show(perfInfo);
 };
 
-Widgets.body.topPerf = {
+Widgets.body.perfTop = {
   prepareToShow: function(aPerfInfo, aCallback) {
     // The documents for leaf functions we care about.  We do threshold
     aPerfInfo.leaf_funcs = [];
@@ -13,7 +13,7 @@ Widgets.body.topPerf = {
     aPerfInfo.callback = aCallback;
     DBUtils.getDocs(aPerfInfo.db, "by_leaf_count", "perfish", {
                       descending: true, limit: 32
-                    }, Widgets.body.topPerf._gotLeafCounts, aPerfInfo);
+                    }, Widgets.body.perfTop._gotLeafCounts, aPerfInfo);
   },
   _gotLeafCounts: function(aDocs, aPerfInfo) {
     // arbitrary decimation threshold
@@ -37,7 +37,7 @@ Widgets.body.topPerf = {
 
     DBUtils.getDocs(aPerfInfo.db, "by_leaf_count", "perfish", {
                       descending: true, limit: 64
-                    }, Widgets.body.topPerf._gotBranchCounts, aPerfInfo);
+                    }, Widgets.body.perfTop._gotBranchCounts, aPerfInfo);
   },
   _gotBranchCounts: function(aDocs, aPerfInfo) {
     // Similar deal to the leaf processing except:
@@ -48,7 +48,7 @@ Widgets.body.topPerf = {
       if (doc.leaf_count < aPerfInfo.thresh_leaf_count)
         break;
 
-      if (doc.canonical_name in aPefInfo.known_funcs)
+      if (doc.canonical_name in aPerfInfo.known_funcs)
         continue;
 
       aPerfInfo.branch_funcs.push(doc);
@@ -95,9 +95,11 @@ Widgets.body.topPerf = {
       node_map[doc.canonical_name] = node;
     }
 
+    var all_docs = aPerfInfo.leaf_funcs.concat(aPerfInfo.branch_funcs);
+
     // -- build the edges
-    for (iDoc = 0; iDoc < aDocs.length; iDoc++) {
-      doc = aDocs[iDoc];
+    for (iDoc = 0; iDoc < all_docs.length; iDoc++) {
+      doc = all_docs[iDoc];
       node = node_map[doc.canonical_name];
 
       for (var called_name in doc.called) {
@@ -118,6 +120,7 @@ Widgets.body.topPerf = {
   },
   deserialize: function(aDBName) {
     var perfInfo = {
+      type: "perfTop",
       name: _("Profile Samples"),
       fullName: _("Profile Samples"),
       db: $.couch.db(aDBName)
