@@ -156,7 +156,8 @@ var thunderbirdRepo = explodeRepo({
       path: "mail/components/activity/content/",
       chrome_path: "messenger/content/",
       files: [
-        "activity.js",
+        // probably the let (blah = other) {} construct
+        //"activity.js",
       ]
     },
     // -- mailnews/
