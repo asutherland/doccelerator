@@ -129,7 +129,7 @@ ForceDirectedLayout.prototype.handleDoubleClick = null;
  * @param {Object} e
  */
 ForceDirectedLayout.prototype.handleMouseMoveEvent = function( e ) {
-	if ( this.model.selected && !this.model.particles[this.model.selected].fixed ) {
+	if ( (this.model.selected != null) && !this.model.particles[this.model.selected].fixed ) {
 
 		// TODO: This is a very temporary fix. In Firefox 2, our EventHandler
 		// factory piles mouse events onto the arguments list.
@@ -160,7 +160,7 @@ ForceDirectedLayout.prototype.handleMouseMoveEvent = function( e ) {
  * and clears the selection.
  */
 ForceDirectedLayout.prototype.handleMouseUpEvent = function() {
-	if ( this.model.selected ) {
+	if ( this.model.selected != null) {
 		this.model.particles[this.model.selected].selected = false;
 		this.model.reset();
 		this.model.selected = null;
