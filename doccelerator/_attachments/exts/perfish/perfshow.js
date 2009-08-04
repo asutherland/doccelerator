@@ -9,6 +9,10 @@ Widgets.body.perfTop = {
     aPerfInfo.leaf_funcs = [];
     aPerfInfo.branch_funcs = [];
     aPerfInfo.known_funcs = {};
+    aPerfInfo.requested_locs = [];
+    // Maps canonical names to doccelerator documents.  We do not expect natives
+    //  to get resolved.
+    aPerfInfo.locs_to_docs = null;
 
     aPerfInfo.callback = aCallback;
     DBUtils.getDocs(aPerfInfo.db, "by_leaf_count", "perfish", {
@@ -33,6 +37,7 @@ Widgets.body.perfTop = {
 
       aPerfInfo.leaf_funcs.push(doc);
       aPerfInfo.known_funcs[doc.canonical_name] = doc;
+      aPerfInfo.requested_locs.push([doc.src_path, doc.line]);
     }
 
     DBUtils.getDocs(aPerfInfo.db, "by_branch_count", "perfish", {
@@ -53,13 +58,28 @@ Widgets.body.perfTop = {
 
       aPerfInfo.branch_funcs.push(doc);
       aPerfInfo.known_funcs[doc.canonical_name] = doc;
+      aPerfInfo.requested_locs.push([doc.src_path, doc.line]);
     }
+
+    DBUtils.getDocs(DB, "by_loc", design, {
+                      keys: aPerfInfo.requested_locs
+                    }, Widgets.body.perfTop._gotDocsByLoc, aPerfInfo);
+  },
+  _gotDocsByLoc: function(aDocs, aPerfInfo) {
+    aPerfInfo.locs_to_docs = {};
+    for (var iDoc = 0; iDoc < aDocs.length; iDoc++) {
+      var doc = aDocs[iDoc];
+
+      aPerfInfo.locs_to_docs[doc.file + ":" + doc.loc.line] = doc;
+    }
+    aPerfInfo.requested_locs = null;
 
     var callback = aPerfInfo.callback;
     aPerfInfo.callback = null;
     callback();
   },
   show: function(aNode, aPerfInfo) {
+    aPerfInfo.node = aNode;
     aPerfInfo.graph = $("<div></div>")
       .addClass("graph-fd")
       .appendTo(aNode);
@@ -71,6 +91,12 @@ Widgets.body.perfTop = {
     var layout = aPerfInfo.layout =
       Widgets.widget.fdgraph.fab(aPerfInfo.graph[0]);
     layout.config = new layout.config(layout);
+    layout.handleMouseOver = this._nodeMouseOver;
+    layout.handleMouseOverThis = aPerfInfo;
+    layout.handleMouseOut = this._nodeMouseOut;
+    layout.handleMouseOutThis = aPerfInfo;
+    layout.handleDoubleClick = this._nodeDoubleClick;
+    layout.handleDoubleClickThis = aPerfInfo;
 
     var iDoc, doc, node, maxCount;
     // map canonical paths to nodes
@@ -202,5 +228,23 @@ Widgets.body.perfTop = {
     };
     perfInfo.db.uri = urlbase + aDBName + "/";
     return perfInfo;
+  },
+  // 'this' is aPerfInfo
+  _nodeMouseOver: function(dataNode, modelNode) {
+
+  },
+  // 'this' is aPerfInfo
+  _nodeMouseOut: function(dataNode, modelNode) {
+
+  },
+  // 'this' is aPerfInfo
+  _nodeDoubleClick: function(dataNode, modelNode) {
+    // try and show the associated info if we've got it
+    var func = dataNode.func;
+    if (func.canonical_name in this.locs_to_docs) {
+      UI.show(this.locs_to_docs[func.canonical_name], this.node);
+    }
+    else {
+    }
   }
 };

@@ -118,6 +118,10 @@ ForceDirectedLayout.prototype.setSize = function() {
 	this.model.draw( true );
 }
 
+ForceDirectedLayout.prototype.handleMouseOver = null;
+ForceDirectedLayout.prototype.handleMouseOut = null;
+ForceDirectedLayout.prototype.handleDoubleClick = null;
+
 /*
  * A default mousemove handler. Moves the selected node and updates child
  * positions according to geometric model.
@@ -421,7 +425,6 @@ ForceDirectedLayout.prototype.defaultNodeView = function( dataNode, modelNode ) 
 		nodeElement.setAttribute('stroke-width', '.25px');
 		nodeElement.setAttribute('fill', dataNode.color);
 		nodeElement.setAttribute('r', dataNode.radius + 'px');
-		nodeElement.onmousedown =  new EventHandler( this, this.handleMouseDownEvent, modelNode.id )
 	} else {
 		nodeElement = document.createElement( 'div' );
 		nodeElement.style.position = "absolute";
@@ -429,8 +432,20 @@ ForceDirectedLayout.prototype.defaultNodeView = function( dataNode, modelNode ) 
 		nodeElement.style.height = "12px";
 		nodeElement.style.backgroundImage = "url(http://kylescholz.com/cgi-bin/bubble.pl?title=&r=12&pt=8&b=444444&c=aaaaaa)";
 		nodeElement.innerHTML = '<img width="1" height="1">';
-		nodeElement.onmousedown =  new EventHandler( this, this.handleMouseDownEvent, modelNode.id )
 	}
+        nodeElement.onmousedown =  new EventHandler( this, this.handleMouseDownEvent, modelNode.id );
+        if (this.handleMouseOver)
+          nodeElement.onmouseover = new EventHandler(
+            this.handleMouseOverThis, this.handleMouseOver,
+            dataNode, modelNode);
+        if (this.handleMouseOut)
+          nodeElement.onmouseout = new EventHandler(
+            this.handleMouseOutThis, this.handleMouseOut,
+            dataNode, modelNode);
+        if (this.handleDoubleClick)
+          nodeElement.ondblclick = new EventHandler(
+            this.handleDoubleClickThis, this.handleDoubleClick,
+            dataNode, modelNode);
 	return nodeElement;
 }
 

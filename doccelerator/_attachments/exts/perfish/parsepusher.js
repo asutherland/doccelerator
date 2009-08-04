@@ -16,7 +16,6 @@ Widgets.commands["ParsePerf"] = function() {
   User.attemptLogin(function() {
     gPerfParse = new ProfileParser([thunderbirdRepo, mozilla191Repo],
                                    curPerfProf);
-    console.log("perf parse", gPerfParse);
     gPerfParse.startParse(curPerfProf.trace_file);
   });
 };

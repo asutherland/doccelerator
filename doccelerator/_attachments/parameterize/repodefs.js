@@ -1,6 +1,8 @@
 var mozilla191Repo = explodeRepo({
   url_base: '/xhr/hg/mozilla/mozilla-1.9.1/raw-file/tip/',
   repo_name: 'mozilla-1.9.1',
+  // in the comm-central repo, we are rooted at mozilla/
+  rel_path: 'mozilla/',
   dirs: [
     // -- XUL toolkit widgets
     {
@@ -62,6 +64,7 @@ var mozilla191Repo = explodeRepo({
 var thunderbirdRepo = explodeRepo({
   url_base: '/xhr/hg/mozilla/comm-central/raw-file/tip/',
          // 'http://hg.mozilla.org/comm-central/raw-file/tip/',
+  rel_path: '',
   repo_name: 'comm-central',
   dirs: [
     // -- mail/ modules

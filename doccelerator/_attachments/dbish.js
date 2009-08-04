@@ -38,7 +38,7 @@ function explodeRepo(aRepoDef) {
 
     for (var iFile = 0; iFile < dir.files.length; iFile++) {
       var filename = dir.files[iFile];
-      var repo_path = dir.path + filename;
+      var repo_path = aRepoDef.rel_path + dir.path + filename;
       aRepoDef.files.push(repo_path);
       if (mapped_path_dict)
         mapped_path_dict[mapped_path_value + filename] = repo_path;
@@ -119,7 +119,7 @@ RepoProcessor.prototype = {
              url: HYDRA_FLAM_URL,
              dataType: "json",
              data: {
-               filename: this.repo.repo_name + "/" + this.current_file,
+               filename: this.repo.rel_path + this.current_file,
                filedata: this.file_data
              },
              success: function (data) {
@@ -143,7 +143,7 @@ RepoProcessor.prototype = {
     Log.info("Nuking documents previously associated with the file.");
     var dis = this;
     DB.view(design + "/by_file", {
-              key: this.repo.repo_name + "/" + this.current_file, reduce: false,
+              key: this.current_file, reduce: false,
               include_docs: true,
               success: function(data) {
                 dis._gotExisting(data);
