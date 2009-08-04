@@ -13,11 +13,11 @@ body {
   position: absolute;
   left: 0;
   top: 0;
-  width: 20%;
+  width: 20em;
 }
 
 #body {
-  margin-left: 20%;
+  margin-left: 20em;
 }
 
 #body h3 {
@@ -163,7 +163,7 @@ td {
 .graph-fd {
   width: 95%;
   width: -moz-available;
-  height: 40em;
+  height: 30em;
 }
 
 #perf-tooltip {

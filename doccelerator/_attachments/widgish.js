@@ -181,6 +181,8 @@ Widgets.sidebar.files = {
         }
       }
     }
+    if (treeified[0] == "")
+      treeified = treeified.slice(1);
     renderTree(jContent, treeified);
   },
   _showFile: function() {

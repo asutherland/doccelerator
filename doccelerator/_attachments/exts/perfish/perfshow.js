@@ -21,7 +21,7 @@ Widgets.body.perfTop = {
   },
   _gotLeafCounts: function(aDocs, aPerfInfo) {
     // arbitrary decimation threshold
-    aPerfInfo.thresh_factor = 8;
+    aPerfInfo.thresh_factor = 50;
     aPerfInfo.max_leaf_count = aDocs[0].leaf_samples;
     aPerfInfo.thresh_leaf_count = Math.floor(aPerfInfo.max_leaf_count /
                                              aPerfInfo.thresh_factor);
@@ -32,7 +32,7 @@ Widgets.body.perfTop = {
     for (var iDoc = 0; iDoc < aDocs.length; iDoc++) {
       var doc = aDocs[iDoc];
 
-      if (doc.leaf_count < aPerfInfo.thresh_leaf_count)
+      if (doc.leaf_samples < aPerfInfo.thresh_leaf_count)
         break;
 
       aPerfInfo.leaf_funcs.push(doc);
@@ -50,7 +50,7 @@ Widgets.body.perfTop = {
     for (var iDoc = 0; iDoc < aDocs.length; iDoc++) {
       var doc = aDocs[iDoc];
 
-      if (doc.leaf_count < aPerfInfo.thresh_leaf_count)
+      if (doc.branch_samples < aPerfInfo.thresh_leaf_count)
         break;
 
       if (doc.canonical_name in aPerfInfo.known_funcs)
@@ -108,7 +108,7 @@ Widgets.body.perfTop = {
       doc = aPerfInfo.leaf_funcs[iDoc];
       node = new DataGraphNode();
       var percentOfMax = doc.leaf_samples / maxCount;
-      var lightness = 100 - (Math.floor(50 * percentOfMax));
+      var lightness = 90 - (Math.floor(40 * percentOfMax));
       node.color = "hsl(0,100%," + lightness + "%)";
       node.radius = 10;
       node.func = doc;
@@ -122,7 +122,7 @@ Widgets.body.perfTop = {
       doc = aPerfInfo.branch_funcs[iDoc];
       node = new DataGraphNode();
       var percentOfMax = doc.branch_samples / maxCount;
-      var lightness = 100 - (Math.floor(50 * percentOfMax));
+      var lightness = 90 - (Math.floor(40 * percentOfMax));
       node.color = "hsl(240,100%," + lightness + "%)";
       node.radius = 6;
       node.func = doc;
@@ -182,7 +182,7 @@ Widgets.body.perfTop = {
         return {
           'stroke': "rgba(128, 128, 128, 0." +
                       Math.floor(2 + 5 * normalizedStrength) + ")",
-          'stroke-width': Math.floor(2 + 4 * normalizedStrength) + 'px',
+          'stroke-width': Math.floor(2 + 6 * normalizedStrength) + 'px',
         };
       }
       else {
@@ -245,12 +245,15 @@ Widgets.body.perfTop = {
       .text(func.branch_samples);
     // modified from example at
     // http://jsviz.org/files/jsviz/0.3.3/examples/XMLLoader_Snowflake_Tooltips.html
+    var containerOffset = $(this.layout.container).offset();
     tooltip[0].style.left =
-      (modelNode.positionX * this.layout.view.skewX +
-       this.layout.view.centerX + 5) + "px";
-    tooltip[0].style.top=
-      (modelNode.positionY * this.layout.view.skewY +
-       this.layout.view.centerY - 25) +  "px";
+      (containerOffset.left +
+       modelNode.positionX * this.layout.view.skewX +
+       this.layout.view.centerX + 15) + "px";
+    tooltip[0].style.top =
+      (containerOffset.top +
+       modelNode.positionY * this.layout.view.skewY +
+       this.layout.view.centerY - 30) +  "px";
     tooltip.show();
   },
   // 'this' is aPerfInfo
