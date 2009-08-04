@@ -231,11 +231,32 @@ Widgets.body.perfTop = {
   },
   // 'this' is aPerfInfo
   _nodeMouseOver: function(dataNode, modelNode) {
-
+    var func = dataNode.func;
+    var tooltip = $("#perf-tooltip");
+    tooltip.children(".perf-filename")
+      .text(func.src_path);
+    tooltip.children(".perf-line-number")
+      .text(func.line);
+    tooltip.children(".perf-function-name")
+      .text(func.func_name);
+    tooltip.children(".perf-leaf-calls")
+      .text(func.leaf_samples);
+    tooltip.children(".perf-branch-calls")
+      .text(func.branch_samples);
+    // modified from example at
+    // http://jsviz.org/files/jsviz/0.3.3/examples/XMLLoader_Snowflake_Tooltips.html
+    tooltip[0].style.left =
+      (modelNode.positionX * this.layout.view.skewX +
+       this.layout.view.centerX + 5) + "px";
+    tooltip[0].style.top=
+      (modelNode.positionY * this.layout.view.skewY +
+       this.layout.view.centerY - 25) +  "px";
+    tooltip.show();
   },
   // 'this' is aPerfInfo
   _nodeMouseOut: function(dataNode, modelNode) {
-
+    var tooltip = $("#perf-tooltip");
+    tooltip.hide();
   },
   // 'this' is aPerfInfo
   _nodeDoubleClick: function(dataNode, modelNode) {

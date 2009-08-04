@@ -166,6 +166,14 @@ td {
   height: 40em;
 }
 
+#perf-tooltip {
+  position: absolute;
+  background: #000000;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid #aaaaaa;
+  padding: 4px;
+}
+
 #sidebar .happybox h3 {
   -moz-border-radius: 6px;
   -moz-background-clip:border;

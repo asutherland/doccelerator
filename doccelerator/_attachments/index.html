@@ -40,10 +40,16 @@
       <!-- Sentinel div to try and eliminate scrolling explosions. -->
       <div></div>
     </div>
-    <div id="namedialog" title="Enter a username!">
+    <div id="namedialog" title="Enter a username!" style="display: none;">
       Please enter a user name to identify yourself.  (IRC handle is
       good).<br />
       <input id="dia-username"></input>
+    </div>
+    <div id="perf-tooltip" style="display: none;">
+      <span class="perf-filename"></span> @ <span class="perf-line-number"></span><br />
+      <span class="perf-function-name"></span><br />
+      Leaf: <span class="perf-leaf-calls"></span>
+      Branch: <span class="perf-branch-calls"></span>
     </div>
   </body>
   <script type="text/javascript" src="js/json2.js"></script>
