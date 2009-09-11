@@ -245,6 +245,7 @@ void dump_js_stack() {
 }
 
 int now;
+string cstack;
 USEC:1000 {
   get_cur_task_struct();
   if (!strcmp(curprocname(), "thunderbird-bin")) {
@@ -252,5 +253,7 @@ USEC:1000 {
     now = guestload(0xc0823a00);
     printf("*** TIME: %x\n", now);
     dump_js_stack();
+    gueststack(cstack);
+    printf("C stack: %s\n", cstack);
   }
 }
