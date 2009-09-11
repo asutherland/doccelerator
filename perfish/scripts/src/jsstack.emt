@@ -111,7 +111,7 @@ int privateData;
 int PR_GetThreadPrivate(int index) {
   ## pthread key is 4 words after pt_book (+ 0x10)
   ## gdb: info addr pt_book => 0xb7d9c9000;
-  pthread_key = guestload32(${ hex(gdb.parse_and_eval("info addr ptr_book")) } + 0x10);
+  pthread_key = guestload32(${ gdb.parse_and_eval("&pt_book") } + 0x10);
   pr_thread = pthread_getspecific(pthread_key);
   ## PRThread.privateData is the 10th word in => 0x24
   privateData = guestload32(pr_thread + 0x24);
@@ -144,7 +144,7 @@ int js_context_info;
 int _nsXPConnect_Peek_ret;
 int nsXPConnect_Peek() {
   ## gdb: info addr XPCPerThreadData::gTLSIndex => 0xb545f084
-  tls_slot = guestload32(${ hex(gdb.parse_and_eval("info addr XPCPerThreadData::gTLSIndex")) });
+  tls_slot = guestload32(${ gdb.parse_and_eval("&XPCPerThreadData::gTLSIndex") });
   if (tls_slot == 0xffffffff) {
     _nsXPConnect_Peek_ret = 0;
   }
