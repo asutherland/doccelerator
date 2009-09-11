@@ -20,6 +20,8 @@ def chew_script(script_name):
     output_path = os.path.join(scripts_dir, 'processed', script_name)
 
     print 'in', input_path, 'out', output_path
+    process_script(input_path, output_path)
+    print 'done'
 
 def process_script(input_path, output_path):
     '''
