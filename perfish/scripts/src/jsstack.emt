@@ -47,7 +47,8 @@ void get_cur_task_struct()
   ## sp0 is at 0x4 (and sp1 is at 0xc)
   ## _tssSP = guestload32(0xc07cdf84);
 
-  _perCPUOffset = guestload32(0xc073e9a0);
+  ## kallsyms: __per_cpu_offset => c073f9a0
+  _perCPUOffset = guestload32(0xc073f9a0);
 
   _tssSP = guestload32(_perCPUOffset + 0xc07cdf80 + 0x4);
 
