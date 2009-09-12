@@ -8,6 +8,7 @@
 
 var curPerfProf = {
   trace_file: "/vms/jaunty-i386/vprobe.out",
+  pc_map: "/vms/jaunty-i386/known_pcs-mapped.json",
   db_name: "perfish",
 };
 
@@ -16,10 +17,28 @@ Widgets.commands["ParsePerf"] = function() {
   User.attemptLogin(function() {
     gPerfParse = new ProfileParser([thunderbirdRepo, mozilla191Repo],
                                    curPerfProf);
-    gPerfParse.startParse(curPerfProf.trace_file);
+    gPerfParse.startParse(curPerfProf);
   });
 };
 
+/**
+ * The profiler parser takes a list of repository definitions and a performance
+ *  profile definition, parsing the profile and outputting the results into
+ *  the database named in the performance profile definition.
+ *
+ * @param aRepoDefs The list of the source repositories that make up the code in
+ *     your application.
+ * @param aPerfProfDef The performance profile definition.
+ * @param aPerfProfDef.trace_file Url where we can find the trace output from
+ *     jsstack.emt.
+ * @param aPerfProfDef.pc_map Url where we can find the JSON file whose payload
+ *     is a dictionary mapping string-represented hex addresses (ex: "0x40") to
+ *     a list of the form [file path, function name].  The addresses correspond
+ *     to program counter addresses translated by gdb or something like that.
+ *     Use pcextractor.py and gdbpclookup.py to get this file.
+ * @param aPerfProfDef.db_name The name of the couch database where we should
+ *     stash our results.
+ */
 function ProfileParser(aRepoDefs, aPerfProfDef) {
   this.repos = aRepoDefs;
   this.prof = aPerfProfDef;
@@ -42,10 +61,10 @@ ProfileParser.prototype = {
   _reChrome: /^chrome:\/{2}/,
   _reNull: /^<NULL:/,
   /**
-   * Normalize paths into source/origin paths.  Input paths are either chrome
+   * Normalize JS paths into source/origin paths.  Input paths are either chrome
    *  URLs or, in the case of modules, file URLs to the installed dist path.
    */
-  _norm_path: function ProfileParser__norm_path(aPath) {
+  _norm_js_path: function ProfileParser__norm_js_path(aPath) {
     // module or component
     if (this._reFile.test(aPath)) {
       // strip down to the dist subdir paths, then correct that
@@ -81,12 +100,17 @@ ProfileParser.prototype = {
     }
   },
 
-  _chew_block: function ProfileParser__chew_block(aTimestamp, aJSLines) {
+  /**
+   * Process a JS call-stack.
+   */
+  _chew_js_stack: function ProfileParser__chew_js_stack(aTimestamp, aJSLines) {
     // The first stack frame is the current stack frame, and each subsequent
     //  frame is the parent frame of the preceding frame.  called_func_info
     //  is the function info for the previous line (and frame)
     let called_func_info = null;
     for each (let [, line] in Iterator(aJSLines)) {
+      // Line format is: "file uri:function name:line", where the file path
+      //  may include colons, so we count our colons from the end.
       let c2 = line.lastIndexOf(":");
       let c1 = line.lastIndexOf(":", c2-1);
       let path = line.substring(1, c1);
@@ -97,7 +121,7 @@ ProfileParser.prototype = {
       if (path in this.cached_paths)
         path = this.cached_paths[path];
       else
-        path = this.cached_paths[path] = this._norm_path(path);
+        path = this.cached_paths[path] = this._norm_js_path(path);
       // native functions
       if (path == "native") {
         // just skip completely useless native frames
@@ -147,15 +171,55 @@ ProfileParser.prototype = {
     }
   },
 
-  startParse: function ProfileParser_startParse(aUrl) {
+  /**
+   * Normalize a C/C++ file path told to us by gdb.  These will generally
+   *  fall into three types of paths:
+   * - Absolute paths referring to the source tree.  This happens for actual
+   *    C++ source files and private-ish header files.
+   * - Just a filename.  This seems to happen for C source files, probably
+   *    from NSPR.
+   * - Relative paths referring to the the dist/ subtree.  This happens for
+   *    header files, which makes a lot of sense.
+   *
+   * For the time being, our normalization is to just return the filename
+   *  and ignore all that path stuff.
+   */
+  _norm_c_path: function ProfileParser__norm_c_path(aPath) {
+    let idxSlash = aPath.lastIndexOf("/");
+    if (idxSlash == -1)
+      return aPath;
+    return (aPath.substring(idxSlash+1));
+  },
+
+  /**
+   * Process a C/C++ stack as returned by VProbes' gueststack function.
+   *
+   * @param aTimestamp The timestamp, which we ignore.
+   * @param aStackStr The gueststack string with the "GUEST_" part already
+   *     removed from the front of the string.
+   */
+  _chew_c_stack: function ProfileParser__chew_c_stack(aTimestamp, aStackStr) {
+    let addr_parts = aStackStr.split('_');
+    for each (let [, hexish] in Iterator(addr_parts)) {
+      // hexish could have ellipses in it, but in that case we just won't
+      //  know about it, the same as a ridiculous PC.
+    }
+  },
+
+  /**
+   * Kick-off an asynchronous parse.  |_parse| is a generator which does the
+   *  actual parsing driven by |_parseDriver|.  We get things rolling by
+   *  issuing a fetch and handing things off to the driver when it completes.
+   */
+  startParse: function ProfileParser_startParse(aProfDef) {
     let dis = this;
     $.ajax({type: "GET",
-            url: aUrl,
+            url: aProfDef.trace_file,
             dataType: "text",
             success: function (aData) {
               let lines = aData.split("\n");
               dis.total_lines = lines.length;
-              dis._parseGenerator = dis._parse(lines);
+              dis._parseGenerator = dis._parse(aProfDef, lines);
               dis._progress =
                 Widgets.sidebar.activities.start("Parsing Profile");
               setTimeout(dis._parseDriver, 0, dis);
@@ -163,6 +227,14 @@ ProfileParser.prototype = {
            });
   },
 
+  /**
+   * Asynchronous generator driver for the |_parse| function.  We use timeouts
+   *  to be friendly.  We depend on the generator yielding tuples of
+   *  [phase string, integer progress for this phase 0-100, boolean indicating
+   *   whether we should reschedule ourselves (true) or if there is an async
+   *   callback that will happen to take care of things (false)].
+   * We update the activity associated with this parse process as we go along.
+   */
   _parseDriver: function ProfileParser__parseDriver(aThis, aArg, aLateness) {
     // REMEMBER: no (valid) 'this' in here
     let status;
@@ -195,8 +267,14 @@ ProfileParser.prototype = {
 
   /**
    * Parse a profile output run
+   *
+   * @param aProfDef The performance profile definition.
+   * @param aLineGenerator An line generator that when we call Iterator on it
+   *     will provide us with an iterator over the lines.  Intended so that
+   *     we might do more clever streaming in the future than what we currently
+   *     do.
    */
-  _parse: function ProfileParser__parse(aLineGenerator) {
+  _parse: function ProfileParser__parse(aProfDef, aLineGenerator) {
     // map aliased files to file info
     this.files = {};
     this.cached_paths = {};
@@ -208,7 +286,7 @@ ProfileParser.prototype = {
                            dis._parseDriver(dis, 0);
                          };
 
-    // create the db, nuking it first if it already exists
+    // -- create the db, nuking it first if it already exists
     this.db = $.couch.db(this.prof.db_name);
     this.db.uri = urlbase + this.prof.db_name + "/";
     this.db.drop({success: driverCallback, failure: driverCallback});
@@ -243,6 +321,12 @@ ProfileParser.prototype = {
     }, {success: driverCallback});
     yield ["db init", 75, false];
 
+    // -- get the PC translation information if present
+
+
+
+    // --- Parse the trace, creating invocation summaries for functions and file
+    //     aggregations.
     const reTStamp = /^\*\*\* TIME: (\d+)/;
 
     const yieldEvery = 1000;
@@ -250,8 +334,6 @@ ProfileParser.prototype = {
     let timestamp = null;
     let js_lines = null;
 
-    // --- Parse the trace, creating invocation summaries for functions and file
-    //     aggregations.
     for each (let [iLine, line] in Iterator(aLineGenerator)) {
       let match;
       let firstChar = line[0];
@@ -261,7 +343,7 @@ ProfileParser.prototype = {
 
       if (firstChar == "*") {
         if (timestamp)
-          this._chew_block(timestamp, js_lines);
+          this._chew_js_stack(timestamp, js_lines);
 
         match = reTStamp.exec(line);
         timestamp = parseInt(match[1], 16);
@@ -278,6 +360,11 @@ ProfileParser.prototype = {
       else if (firstChar == " ") {
         js_lines.push(line);
       }
+      // C stack!
+      else if (firstChar == "C") {
+        // len('C stack: GUEST_') == 15
+        this._chew_c_stack(timestamp, line.substring(15));
+      }
       // unknown => asplode
       else {
         line = line.trim();
@@ -286,7 +373,7 @@ ProfileParser.prototype = {
       }
     }
     if (timestamp)
-      this._chew_block(timestamp, js_lines);
+      this._chew_js_stack(timestamp, js_lines);
 
     // --- Post-process the function aggregations into class aggregates.
 

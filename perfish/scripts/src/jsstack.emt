@@ -255,6 +255,8 @@ USEC:1000 {
     printf("*** TIME: %x\n", now);
     dump_js_stack();
     gueststack(cstack);
-    printf("C stack: %s\n", cstack);
+    printf("C stack: %s", cstack);
+    # sometimes the previous failed to emit a newline, so do it separately...
+    printf("\n");
   }
 }
